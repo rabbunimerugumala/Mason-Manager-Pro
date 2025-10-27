@@ -143,11 +143,11 @@ export default function PlaceDashboard() {
                   <Input id="labourers" type="number" value={labourerCount} onChange={e => setLabourerCount(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="muta">Muta Work Cost (₹)</Label>
+                  <Label htmlFor="muta">Muta Work Cost (Rs:)</Label>
                   <Input id="muta" type="number" value={mutaCost} onChange={e => setMutaCost(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="machines">Machines Cost (₹)</Label>
+                  <Label htmlFor="machines">Machines Cost (Rs:)</Label>
                   <Input id="machines" type="number" value={machinesCost} onChange={e => setMachinesCost(Number(e.target.value))} />
                 </div>
               </div>
@@ -167,11 +167,11 @@ export default function PlaceDashboard() {
             <CardContent className="space-y-4">
                <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="worker-rate">Worker Rate (₹)</Label>
+                  <Label htmlFor="worker-rate">Worker Rate (Rs:)</Label>
                   <Input id="worker-rate" type="number" value={workerRate} onChange={e => setWorkerRate(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="labourer-rate">Labourer Rate (₹)</Label>
+                  <Label htmlFor="labourer-rate">Labourer Rate (Rs:)</Label>
                   <Input id="labourer-rate" type="number" value={labourerRate} onChange={e => setLabourerRate(Number(e.target.value))} />
                 </div>
               </div>
@@ -192,12 +192,12 @@ export default function PlaceDashboard() {
             <CardContent className="space-y-4 text-center">
               <div>
                 <p className="text-muted-foreground">Today's Total Payment</p>
-                <p className="text-3xl font-bold text-primary">₹{todayPayment.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-primary">Rs: {todayPayment.toFixed(2)}</p>
               </div>
               <Separator />
               <div>
                 <p className="text-muted-foreground">This Week's Total</p>
-                <p className="text-3xl font-bold text-primary">₹{thisWeekPayment.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-primary">Rs: {thisWeekPayment.toFixed(2)}</p>
               </div>
             </CardContent>
           </Card>

@@ -80,7 +80,7 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
           name="muta"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Muta Work Cost (₹)</FormLabel>
+              <FormLabel>Muta Work Cost (Rs:)</FormLabel>
               <FormControl>
                 <Input type="number" {...field} />
               </FormControl>
@@ -93,7 +93,7 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
           name="machines"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Machines Cost (₹)</FormLabel>
+              <FormLabel>Machines Cost (Rs:)</FormLabel>
               <FormControl>
                 <Input type="number" {...field} />
               </FormControl>

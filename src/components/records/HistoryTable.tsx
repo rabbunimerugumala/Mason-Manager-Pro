@@ -71,9 +71,9 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
               <TableHead className="w-[120px]">Date</TableHead>
               <TableHead className="text-center">Workers</TableHead>
               <TableHead className="text-center">Labourers</TableHead>
-              <TableHead className="text-center">Muta (₹)</TableHead>
-              <TableHead className="text-center">Machines (₹)</TableHead>
-              <TableHead className="text-center">Total (₹)</TableHead>
+              <TableHead className="text-center">Muta (Rs:)</TableHead>
+              <TableHead className="text-center">Machines (Rs:)</TableHead>
+              <TableHead className="text-center">Total (Rs:)</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead className="text-right w-[120px]">Actions</TableHead>
             </TableRow>
