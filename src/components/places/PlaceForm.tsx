@@ -12,8 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  workerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }),
-  labourerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }),
+  workerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }).default(0),
+  labourerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }).default(0),
 });
 
 interface PlaceFormProps {

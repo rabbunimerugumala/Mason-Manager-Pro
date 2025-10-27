@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Place, DailyRecord } from '@/lib/types';
+import { Place, DailyRecord, AdditionalCost } from '@/lib/types';
 
 interface DataContextType {
   places: Place[];
@@ -10,7 +10,7 @@ interface DataContextType {
   updatePlace: (place: Place) => void;
   deletePlace: (placeId: string) => void;
   getPlaceById: (placeId: string) => Place | undefined;
-  addOrUpdateRecord: (placeId: string, record: Omit<DailyRecord, 'id'>) => { success: boolean; message: string };
+  addOrUpdateRecord: (placeId: string, record: Omit<DailyRecord, 'id' | 'additionalCosts'> & { additionalCosts?: Omit<AdditionalCost, 'id'>[] }) => { success: boolean; message: string };
   deleteRecord: (placeId: string, recordId: string) => void;
   updatePlaceRates: (placeId: string, workerRate: number, labourerRate: number) => void;
 }
@@ -24,8 +24,8 @@ const initialPlaces: Place[] = [
     workerRate: 1000,
     labourerRate: 600,
     records: [
-      { id: '1-1', date: '2024-07-20', workers: 10, labourers: 15, muta: 500, machines: 1200, notes: 'Foundation work started.' },
-      { id: '1-2', date: '2024-07-21', workers: 12, labourers: 18, muta: 0, machines: 1500, notes: 'Heavy rain in the afternoon.' },
+      { id: '1-1', date: '2024-07-20', workers: 10, labourers: 15, muta: 500, machines: 1200, notes: 'Foundation work started.', additionalCosts: [{id: 'ac-1', description: 'Cement Bags', amount: 5000}] },
+      { id: '1-2', date: '2024-07-21', workers: 12, labourers: 18, muta: 0, machines: 1500, notes: 'Heavy rain in the afternoon.', additionalCosts: [] },
     ],
   },
   {
@@ -34,7 +34,7 @@ const initialPlaces: Place[] = [
     workerRate: 900,
     labourerRate: 550,
     records: [
-       { id: '2-1', date: '2024-07-21', workers: 8, labourers: 10, muta: 200, machines: 0, notes: 'Site cleared.' },
+       { id: '2-1', date: '2024-07-21', workers: 8, labourers: 10, muta: 200, machines: 0, notes: 'Site cleared.', additionalCosts: [] },
     ],
   },
 ];
@@ -50,7 +50,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         if (parsedData.length > 0) {
-            setPlaces(parsedData);
+            setPlaces(parsedData.map((p:Place) => ({
+              ...p,
+              records: p.records.map(r => ({
+                ...r,
+                additionalCosts: r.additionalCosts || []
+              }))
+            })));
         } else {
             setPlaces(initialPlaces);
         }
@@ -79,6 +85,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...placeData,
       id: new Date().getTime().toString(),
       records: [],
+      workerRate: placeData.workerRate || 0,
+      labourerRate: placeData.labourerRate || 0
     };
     setPlaces(prev => [...prev, newPlace]);
   }, []);
@@ -95,12 +103,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return places.find(p => p.id === placeId);
   }, [places]);
 
-  const addOrUpdateRecord = useCallback((placeId: string, recordData: Omit<DailyRecord, 'id'>) => {
+  const addOrUpdateRecord = useCallback((placeId: string, recordData: Omit<DailyRecord, 'id' | 'additionalCosts'> & { additionalCosts?: Omit<AdditionalCost, 'id'>[] }) => {
     let message = '';
     setPlaces(prev => prev.map(p => {
       if (p.id === placeId) {
         const existingRecordIndex = p.records.findIndex(r => r.date === recordData.date);
         let newRecords;
+
+        const newAdditionalCosts = (recordData.additionalCosts || []).map(cost => ({
+            ...cost,
+            id: new Date().getTime().toString() + Math.random(),
+        }));
+
         if (existingRecordIndex > -1) {
           newRecords = [...p.records];
           const existingRecord = newRecords[existingRecordIndex];
@@ -108,7 +122,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             ...existingRecord, 
             ...recordData,
             muta: recordData.muta ?? existingRecord.muta,
-            machines: recordData.machines ?? existingRecord.machines
+            machines: recordData.machines ?? existingRecord.machines,
+            additionalCosts: newAdditionalCosts.length > 0 ? newAdditionalCosts : (existingRecord.additionalCosts || []),
           };
           message = "Today's record updated.";
         } else {
@@ -117,6 +132,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             id: new Date().getTime().toString(),
             muta: recordData.muta ?? 0,
             machines: recordData.machines ?? 0,
+            additionalCosts: newAdditionalCosts,
           };
           newRecords = [...p.records, newRecord].sort((a, b) => b.date.localeCompare(a.date));
           message = "Today's record saved.";

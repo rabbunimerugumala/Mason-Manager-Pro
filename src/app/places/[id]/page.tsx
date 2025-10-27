@@ -9,10 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Save, ArrowLeft, Loader2 } from 'lucide-react';
+import { Calendar, Save, ArrowLeft, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
 import { format, startOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Place } from '@/lib/types';
+import { Place, AdditionalCost } from '@/lib/types';
+import { cn } from '@/lib/utils';
+
 
 export default function PlaceDashboard() {
   const params = useParams();
@@ -29,8 +31,7 @@ export default function PlaceDashboard() {
   const [today, setToday] = useState('');
   const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
-  const [mutaCost, setMutaCost] = useState(0);
-  const [machinesCost, setMachinesCost] = useState(0);
+  const [additionalCosts, setAdditionalCosts] = useState<Array<Omit<AdditionalCost, 'id'>>>([{ description: '', amount: 0 }]);
   const [workerRate, setWorkerRate] = useState(0);
   const [labourerRate, setLabourerRate] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,22 +48,24 @@ export default function PlaceDashboard() {
       const todayRecord = currentPlace.records.find(r => r.date === formattedDate);
       setWorkerCount(todayRecord?.workers || 0);
       setLabourerCount(todayRecord?.labourers || 0);
-      setMutaCost(todayRecord?.muta || 0);
-      setMachinesCost(todayRecord?.machines || 0);
-      setWorkerRate(currentPlace.workerRate);
-      setLabourerRate(currentPlace.labourerRate);
+      const savedCosts = todayRecord?.additionalCosts || [];
+      setAdditionalCosts(savedCosts.length > 0 ? savedCosts : [{ description: '', amount: 0 }]);
+      setWorkerRate(currentPlace.workerRate || 0);
+      setLabourerRate(currentPlace.labourerRate || 0);
     }
   }, [placeId, getPlace, loading]);
 
   const handleSaveRecord = () => {
     if (!place) return;
     setIsSaving(true);
+    const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
     const { message } = addOrUpdateRecord(place.id, {
       date: today,
       workers: workerCount,
       labourers: labourerCount,
-      muta: mutaCost,
-      machines: machinesCost,
+      muta: 0, // Deprecated, but kept for data compatibility
+      machines: 0, // Deprecated
+      additionalCosts: validAdditionalCosts,
     });
     toast({ title: 'Success', description: message });
     setTimeout(() => setIsSaving(false), 500);
@@ -70,19 +73,38 @@ export default function PlaceDashboard() {
   
   const handleSaveRates = () => {
     if (!place) return;
-    updatePlaceRates(place.id, Number(workerRate), Number(labourerRate));
+    updatePlaceRates(place.id, Number(workerRate) || 0, Number(labourerRate) || 0);
     toast({ title: 'Success', description: 'Payment rates updated.' });
   };
 
+  const handleAdditionalCostChange = (index: number, field: 'description' | 'amount', value: string | number) => {
+    const newCosts = [...additionalCosts];
+    const cost = newCosts[index];
+    if (field === 'amount') {
+      cost.amount = Number(value) || 0;
+    } else {
+      cost.description = String(value);
+    }
+    setAdditionalCosts(newCosts);
+  };
+
+  const addAdditionalCostField = () => {
+    setAdditionalCosts([...additionalCosts, { description: '', amount: 0 }]);
+  };
+  
+  const removeAdditionalCostField = (index: number) => {
+    const newCosts = additionalCosts.filter((_, i) => i !== index);
+    setAdditionalCosts(newCosts);
+  };
+
+
   const todayPayment = useMemo(() => {
     if (!place) return 0;
-    const todayRecord = place.records.find(r => r.date === today);
-    const workersPayment = (todayRecord?.workers || workerCount) * place.workerRate;
-    const labourersPayment = (todayRecord?.labourers || labourerCount) * place.labourerRate;
-    const mutaPayment = todayRecord?.muta || mutaCost;
-    const machinesPayment = todayRecord?.machines || machinesCost;
-    return workersPayment + labourersPayment + mutaPayment + machinesPayment;
-  }, [place, today, workerCount, labourerCount, mutaCost, machinesCost]);
+    const workersPayment = workerCount * (place.workerRate || 0);
+    const labourersPayment = labourerCount * (place.labourerRate || 0);
+    const otherCosts = additionalCosts.reduce((total, cost) => total + (Number(cost.amount) || 0), 0);
+    return workersPayment + labourersPayment + otherCosts;
+  }, [place, workerCount, labourerCount, additionalCosts]);
   
   const thisWeekPayment = useMemo(() => {
     if (!place) return 0;
@@ -95,7 +117,11 @@ export default function PlaceDashboard() {
     });
 
     return thisWeekRecords.reduce((total, record) => {
-      return total + (record.workers * place.workerRate + record.labourers * place.labourerRate + record.muta + record.machines);
+      const workerTotal = record.workers * (place.workerRate || 0);
+      const labourerTotal = record.labourers * (place.labourerRate || 0);
+      const oldCosts = (record.muta || 0) + (record.machines || 0);
+      const newAdditionalCosts = (record.additionalCosts || []).reduce((acc, cost) => acc + (cost.amount || 0), 0);
+      return total + workerTotal + labourerTotal + oldCosts + newAdditionalCosts;
     }, 0);
   }, [place]);
 
@@ -112,6 +138,26 @@ export default function PlaceDashboard() {
       </div>
     );
   }
+  
+  const NumberStepper = ({ label, value, onIncrement, onDecrement }: { label: string, value: number, onIncrement: () => void, onDecrement: () => void }) => (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="icon" onClick={onDecrement} className="h-10 w-10">
+          <Minus className="h-4 w-4" />
+        </Button>
+        <Input
+          type="text"
+          readOnly
+          value={value}
+          className="h-10 text-center text-lg font-bold"
+        />
+        <Button variant="outline" size="icon" onClick={onIncrement} className="h-10 w-10">
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="container mx-auto p-4 md:p-6">
@@ -133,24 +179,64 @@ export default function PlaceDashboard() {
               <CardDescription>Log attendance and other costs for today.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="workers">Workers</Label>
-                  <Input id="workers" type="number" value={workerCount} onChange={e => setWorkerCount(Number(e.target.value))} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <NumberStepper 
+                        label="Workers"
+                        value={workerCount}
+                        onIncrement={() => setWorkerCount(c => c + 1)}
+                        onDecrement={() => setWorkerCount(c => Math.max(0, c - 1))}
+                    />
+                    <NumberStepper 
+                        label="Labourers"
+                        value={labourerCount}
+                        onIncrement={() => setLabourerCount(c => c + 1)}
+                        onDecrement={() => setLabourerCount(c => Math.max(0, c - 1))}
+                    />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="labourers">Labourers</Label>
-                  <Input id="labourers" type="number" value={labourerCount} onChange={e => setLabourerCount(Number(e.target.value))} />
+                
+                <Separator/>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Additional Costs</h3>
+                   {additionalCosts.map((cost, index) => (
+                    <div key={index} className="grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-6 space-y-1">
+                          <Label htmlFor={`cost-desc-${index}`} className={cn(index > 0 && "sr-only")}>Description</Label>
+                          <Input 
+                            id={`cost-desc-${index}`}
+                            placeholder="e.g., Cement bags"
+                            value={cost.description}
+                            onChange={e => handleAdditionalCostChange(index, 'description', e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-4 space-y-1">
+                           <Label htmlFor={`cost-amount-${index}`} className={cn(index > 0 && "sr-only")}>Amount (Rs:)</Label>
+                          <Input
+                            id={`cost-amount-${index}`}
+                            type="number"
+                            placeholder="0"
+                            value={cost.amount || ''}
+                            onChange={e => handleAdditionalCostChange(index, 'amount', e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-2 flex items-end h-full">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => removeAdditionalCostField(index)}
+                            className="text-destructive hover:text-destructive h-10 w-10"
+                            disabled={additionalCosts.length === 1 && index === 0}
+                           >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" onClick={addAdditionalCostField}>
+                    <Plus className="mr-2 h-4 w-4"/>
+                    Add Additional Cost
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="muta">Muta Work Cost (Rs:)</Label>
-                  <Input id="muta" type="number" value={mutaCost} onChange={e => setMutaCost(Number(e.target.value))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="machines">Machines Cost (Rs:)</Label>
-                  <Input id="machines" type="number" value={machinesCost} onChange={e => setMachinesCost(Number(e.target.value))} />
-                </div>
-              </div>
               
               <Button onClick={handleSaveRecord} disabled={isSaving} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
@@ -168,11 +254,11 @@ export default function PlaceDashboard() {
                <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="worker-rate">Worker Rate (Rs:)</Label>
-                  <Input id="worker-rate" type="number" value={workerRate} onChange={e => setWorkerRate(Number(e.target.value))} />
+                  <Input id="worker-rate" type="number" value={workerRate || ''} onChange={e => setWorkerRate(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="labourer-rate">Labourer Rate (Rs:)</Label>
-                  <Input id="labourer-rate" type="number" value={labourerRate} onChange={e => setLabourerRate(Number(e.target.value))} />
+                  <Input id="labourer-rate" type="number" value={labourerRate || ''} onChange={e => setLabourerRate(Number(e.target.value))} />
                 </div>
               </div>
               <Button onClick={handleSaveRates} className="w-full">

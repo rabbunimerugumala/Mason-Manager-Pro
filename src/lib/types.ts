@@ -1,3 +1,9 @@
+export interface AdditionalCost {
+  id: string;
+  description: string;
+  amount: number;
+}
+
 export interface DailyRecord {
   id: string;
   date: string; // ISO string 'YYYY-MM-DD'
@@ -5,11 +11,12 @@ export interface DailyRecord {
   labourers: number;
   muta: number;
   machines: number;
+  additionalCosts: AdditionalCost[];
   notes?: string;
 }
 
 export interface Place {
-  id: string;
+  id:string;
   name: string;
   workerRate: number;
   labourerRate: number;
