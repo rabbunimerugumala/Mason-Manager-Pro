@@ -1,3 +1,66 @@
+'use client';
+
+import { useState } from 'react';
+import { PlusCircle } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
+import type { Place } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { PlaceForm } from '@/components/places/PlaceForm';
+import { PlaceCard } from '@/components/places/PlaceCard';
+import { Skeleton } from '@/components/ui/skeleton';
+
 export default function Home() {
-  return <></>;
+  const { places, loading } = useData();
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+
+  return (
+    <div className="container mx-auto p-4 md:p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Work Sites</h1>
+        <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Create Place
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create New Work Site</DialogTitle>
+            </DialogHeader>
+            <PlaceForm setModalOpen={setCreateModalOpen} />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {loading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex flex-col space-y-3 p-6 rounded-lg border bg-card">
+              <Skeleton className="h-6 w-3/4" />
+              <div className="flex justify-between items-center pt-4">
+                <Skeleton className="h-10 w-24" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-10" />
+                  <Skeleton className="h-10 w-10" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : places.length > 0 ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {places.map((place: Place) => (
+            <PlaceCard key={place.id} place={place} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16 border-2 border-dashed rounded-lg">
+          <h2 className="text-xl font-semibold text-muted-foreground">No work sites found.</h2>
+          <p className="text-muted-foreground mt-2">Get started by creating a new place.</p>
+        </div>
+      )}
+    </div>
+  );
 }
