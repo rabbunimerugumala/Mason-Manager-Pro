@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Place, DailyRecord } from '@/lib/types';
-import { useToast } from "@/hooks/use-toast"
 
 interface DataContextType {
   places: Place[];
@@ -22,8 +21,8 @@ const initialPlaces: Place[] = [
   {
     id: '1',
     name: 'Downtown Skyscraper',
-    workerRate: 25,
-    labourerRate: 15,
+    workerRate: 1000,
+    labourerRate: 600,
     records: [
       { id: '1-1', date: '2024-07-20', workers: 10, labourers: 15, notes: 'Foundation work started.' },
       { id: '1-2', date: '2024-07-21', workers: 12, labourers: 18, notes: 'Heavy rain in the afternoon.' },
@@ -32,8 +31,8 @@ const initialPlaces: Place[] = [
   {
     id: '2',
     name: 'Suburban Villa Complex',
-    workerRate: 22,
-    labourerRate: 14,
+    workerRate: 900,
+    labourerRate: 550,
     records: [
        { id: '2-1', date: '2024-07-21', workers: 8, labourers: 10, notes: 'Site cleared.' },
     ],
@@ -44,7 +43,6 @@ const initialPlaces: Place[] = [
 export function DataProvider({ children }: { children: ReactNode }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -72,14 +70,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('mason-manager-pro-data', JSON.stringify(places));
       } catch (error) {
         console.error("Failed to save data to localStorage", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not save data. Your changes might be lost.",
-        });
+        // We can't use toast here directly as it causes an infinite loop
       }
     }
-  }, [places, loading, toast]);
+  }, [places, loading]);
 
   const addPlace = useCallback((placeData: Omit<Place, 'id' | 'records'>) => {
     const newPlace: Place = {

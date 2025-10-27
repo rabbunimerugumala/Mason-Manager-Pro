@@ -37,11 +37,11 @@ export function PlaceCard({ place }: PlaceCardProps) {
       <CardContent className="flex-grow">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Worker Rate:</span>
-          <span className="font-semibold text-foreground">${place.workerRate}/day</span>
+          <span className="font-semibold text-foreground">₹{place.workerRate}/day</span>
         </div>
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Labourer Rate:</span>
-          <span className="font-semibold text-foreground">${place.labourerRate}/day</span>
+          <span className="font-semibold text-foreground">₹{place.labourerRate}/day</span>
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">

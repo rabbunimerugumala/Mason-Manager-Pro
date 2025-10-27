@@ -61,9 +61,7 @@ export default function PlaceDashboard() {
       workers: workerCount,
       labourers: labourerCount,
     });
-    if (result.success) {
-      toast({ title: 'Success', description: result.message });
-    }
+    toast({ title: 'Success', description: result.message });
     setTimeout(() => setIsSaving(false), 500);
   };
   
@@ -147,11 +145,11 @@ export default function PlaceDashboard() {
             <CardContent className="space-y-4">
                <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="worker-rate">Worker Rate ($)</Label>
+                  <Label htmlFor="worker-rate">Worker Rate (₹)</Label>
                   <Input id="worker-rate" type="number" value={workerRate} onChange={e => setWorkerRate(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="labourer-rate">Labourer Rate ($)</Label>
+                  <Label htmlFor="labourer-rate">Labourer Rate (₹)</Label>
                   <Input id="labourer-rate" type="number" value={labourerRate} onChange={e => setLabourerRate(Number(e.target.value))} />
                 </div>
               </div>
@@ -172,12 +170,12 @@ export default function PlaceDashboard() {
             <CardContent className="space-y-4 text-center">
               <div>
                 <p className="text-muted-foreground">Today's Payment</p>
-                <p className="text-3xl font-bold text-primary">${todayPayment.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-primary">₹{todayPayment.toFixed(2)}</p>
               </div>
               <Separator />
               <div>
                 <p className="text-muted-foreground">This Week's Total</p>
-                <p className="text-3xl font-bold text-primary">${thisWeekPayment.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-primary">₹{thisWeekPayment.toFixed(2)}</p>
               </div>
             </CardContent>
           </Card>

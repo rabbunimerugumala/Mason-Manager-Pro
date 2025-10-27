@@ -66,9 +66,9 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
           name="workerRate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Worker Rate ($/day)</FormLabel>
+              <FormLabel>Worker Rate (₹/day)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="25" {...field} />
+                <Input type="number" placeholder="1000" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -79,9 +79,9 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
           name="labourerRate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Labourer Rate ($/day)</FormLabel>
+              <FormLabel>Labourer Rate (₹/day)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="15" {...field} />
+                <Input type="number" placeholder="600" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

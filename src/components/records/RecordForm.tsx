@@ -37,10 +37,8 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const result = addOrUpdateRecord(placeId, { ...values, date: record.date });
-    if(result.success) {
-      toast({ title: 'Success', description: 'Record updated.' });
-    }
+    addOrUpdateRecord(placeId, { ...values, date: record.date });
+    toast({ title: 'Success', description: 'Record updated.' });
     setModalOpen(false);
   }
 
