@@ -34,6 +34,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DailyRecord } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { RecordForm } from './RecordForm';
+import { useToast } from '@/hooks/use-toast';
 
 interface HistoryTableProps {
   records: DailyRecord[];
@@ -42,6 +43,7 @@ interface HistoryTableProps {
 
 export function HistoryTable({ records, placeId }: HistoryTableProps) {
   const { deleteRecord } = useData();
+  const { toast } = useToast();
   const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
 
   if (records.length === 0) {
@@ -52,6 +54,11 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
         </div>
     );
   }
+
+  const handleDelete = (recordId: string) => {
+    deleteRecord(placeId, recordId);
+    toast({ title: 'Success', description: 'Record deleted.' });
+  };
 
   return (
     <Card>
@@ -105,7 +112,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteRecord(placeId, record.id)} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogAction onClick={() => handleDelete(record.id)} className="bg-destructive hover:bg-destructive/90">
                           Delete
                         </AlertDialogAction>
                       </AlertDialogFooter>

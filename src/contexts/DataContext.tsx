@@ -11,7 +11,7 @@ interface DataContextType {
   updatePlace: (place: Place) => void;
   deletePlace: (placeId: string) => void;
   getPlaceById: (placeId: string) => Place | undefined;
-  addOrUpdateRecord: (placeId: string, record: Omit<DailyRecord, 'id'>) => void;
+  addOrUpdateRecord: (placeId: string, record: Omit<DailyRecord, 'id'>) => { success: boolean; message: string };
   deleteRecord: (placeId: string, recordId: string) => void;
   updatePlaceRates: (placeId: string, workerRate: number, labourerRate: number) => void;
 }
@@ -88,44 +88,41 @@ export function DataProvider({ children }: { children: ReactNode }) {
       records: [],
     };
     setPlaces(prev => [...prev, newPlace]);
-    toast({ title: "Success", description: "New work site created." });
-  }, [toast]);
+  }, []);
 
   const updatePlace = useCallback((updatedPlace: Place) => {
     setPlaces(prev => prev.map(p => p.id === updatedPlace.id ? updatedPlace : p));
-    toast({ title: "Success", description: "Work site updated." });
-  }, [toast]);
+  }, []);
 
   const deletePlace = useCallback((placeId: string) => {
     setPlaces(prev => prev.filter(p => p.id !== placeId));
-    toast({ title: "Success", description: "Work site deleted." });
-  }, [toast]);
+  }, []);
 
   const getPlaceById = useCallback((placeId: string) => {
     return places.find(p => p.id === placeId);
   }, [places]);
 
   const addOrUpdateRecord = useCallback((placeId: string, recordData: Omit<DailyRecord, 'id'>) => {
+    let message = '';
     setPlaces(prev => prev.map(p => {
       if (p.id === placeId) {
         const existingRecordIndex = p.records.findIndex(r => r.date === recordData.date);
         let newRecords;
         if (existingRecordIndex > -1) {
-          // Update existing record for the date
           newRecords = [...p.records];
           newRecords[existingRecordIndex] = { ...newRecords[existingRecordIndex], ...recordData };
-          toast({ title: "Success", description: "Today's record updated." });
+          message = "Today's record updated.";
         } else {
-          // Add new record
           const newRecord: DailyRecord = { ...recordData, id: new Date().getTime().toString() };
           newRecords = [...p.records, newRecord].sort((a, b) => b.date.localeCompare(a.date));
-          toast({ title: "Success", description: "Today's record saved." });
+          message = "Today's record saved.";
         }
         return { ...p, records: newRecords };
       }
       return p;
     }));
-  }, [toast]);
+    return { success: true, message };
+  }, []);
 
   const deleteRecord = useCallback((placeId: string, recordId: string) => {
     setPlaces(prev => prev.map(p => {
@@ -134,13 +131,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       return p;
     }));
-    toast({ title: "Success", description: "Record deleted." });
-  }, [toast]);
+  }, []);
 
   const updatePlaceRates = useCallback((placeId: string, workerRate: number, labourerRate: number) => {
     setPlaces(prev => prev.map(p => p.id === placeId ? { ...p, workerRate, labourerRate } : p));
-    toast({ title: "Success", description: "Payment rates updated." });
-  }, [toast]);
+  }, []);
 
   const value = { places, loading, addPlace, updatePlace, deletePlace, getPlaceById, addOrUpdateRecord, deleteRecord, updatePlaceRates };
 

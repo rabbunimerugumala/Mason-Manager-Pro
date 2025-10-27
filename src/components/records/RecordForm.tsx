@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useData } from '@/contexts/DataContext';
 import type { DailyRecord } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   workers: z.coerce.number().min(0, { message: 'Count must be a positive number.' }),
@@ -24,6 +25,7 @@ interface RecordFormProps {
 
 export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
   const { addOrUpdateRecord } = useData();
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,7 +37,10 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    addOrUpdateRecord(placeId, { ...values, date: record.date });
+    const result = addOrUpdateRecord(placeId, { ...values, date: record.date });
+    if(result.success) {
+      toast({ title: 'Success', description: 'Record updated.' });
+    }
     setModalOpen(false);
   }
 

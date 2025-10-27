@@ -11,11 +11,13 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Minus, Plus, Save, ArrowLeft, Loader2 } from 'lucide-react';
 import { format, startOfWeek, isWithinInterval, parseISO } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PlaceDashboard() {
   const router = useRouter();
   const params = useParams();
   const { getPlaceById, addOrUpdateRecord, updatePlaceRates, loading } = useData();
+  const { toast } = useToast();
   
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const place = useMemo(() => getPlaceById(placeId), [placeId, getPlaceById]);
@@ -54,16 +56,20 @@ export default function PlaceDashboard() {
 
   const handleSaveRecord = () => {
     setIsSaving(true);
-    addOrUpdateRecord(place.id, {
+    const result = addOrUpdateRecord(place.id, {
       date: today,
       workers: workerCount,
       labourers: labourerCount,
     });
+    if (result.success) {
+      toast({ title: 'Success', description: result.message });
+    }
     setTimeout(() => setIsSaving(false), 500);
   };
   
   const handleSaveRates = () => {
     updatePlaceRates(place.id, Number(workerRate), Number(labourerRate));
+    toast({ title: 'Success', description: 'Payment rates updated.' });
   };
 
   const todayPayment = workerCount * workerRate + labourerCount * labourerRate;

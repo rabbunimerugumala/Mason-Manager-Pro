@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { PlaceForm } from './PlaceForm';
+import { useToast } from '@/hooks/use-toast';
 
 interface PlaceCardProps {
   place: Place;
@@ -17,7 +18,13 @@ interface PlaceCardProps {
 
 export function PlaceCard({ place }: PlaceCardProps) {
   const { deletePlace } = useData();
+  const { toast } = useToast();
   const [isEditModalOpen, setEditModalOpen] = useState(false);
+
+  const handleDelete = () => {
+    deletePlace(place.id);
+    toast({ title: 'Success', description: 'Work site deleted.' });
+  };
 
   return (
     <Card className="flex flex-col">
@@ -73,7 +80,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => deletePlace(place.id)} className="bg-destructive hover:bg-destructive/90">
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

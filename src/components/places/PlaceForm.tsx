@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useData } from '@/contexts/DataContext';
 import type { Place } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -22,6 +23,7 @@ interface PlaceFormProps {
 
 export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
   const { addPlace, updatePlace } = useData();
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,8 +37,10 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (place) {
       updatePlace({ ...place, ...values });
+      toast({ title: 'Success', description: 'Work site updated.' });
     } else {
       addPlace(values);
+      toast({ title: 'Success', description: 'New work site created.' });
     }
     setModalOpen(false);
   }
