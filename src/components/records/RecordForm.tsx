@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 const formSchema = z.object({
   workers: z.coerce.number().min(0, { message: 'Count must be a positive number.' }),
   labourers: z.coerce.number().min(0, { message: 'Count must be a positive number.' }),
+  muta: z.coerce.number().min(0, { message: 'Cost must be a positive number.' }),
+  machines: z.coerce.number().min(0, { message: 'Cost must be a positive number.' }),
   notes: z.string().optional(),
 });
 
@@ -32,6 +34,8 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
     defaultValues: {
       workers: record.workers,
       labourers: record.labourers,
+      muta: record.muta || 0,
+      machines: record.machines || 0,
       notes: record.notes || '',
     },
   });
@@ -64,6 +68,32 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Labourers</FormLabel>
+              <FormControl>
+                <Input type="number" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="muta"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Muta Work Cost (₹)</FormLabel>
+              <FormControl>
+                <Input type="number" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="machines"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Machines Cost (₹)</FormLabel>
               <FormControl>
                 <Input type="number" {...field} />
               </FormControl>

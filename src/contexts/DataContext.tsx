@@ -24,8 +24,8 @@ const initialPlaces: Place[] = [
     workerRate: 1000,
     labourerRate: 600,
     records: [
-      { id: '1-1', date: '2024-07-20', workers: 10, labourers: 15, notes: 'Foundation work started.' },
-      { id: '1-2', date: '2024-07-21', workers: 12, labourers: 18, notes: 'Heavy rain in the afternoon.' },
+      { id: '1-1', date: '2024-07-20', workers: 10, labourers: 15, muta: 500, machines: 1200, notes: 'Foundation work started.' },
+      { id: '1-2', date: '2024-07-21', workers: 12, labourers: 18, muta: 0, machines: 1500, notes: 'Heavy rain in the afternoon.' },
     ],
   },
   {
@@ -34,7 +34,7 @@ const initialPlaces: Place[] = [
     workerRate: 900,
     labourerRate: 550,
     records: [
-       { id: '2-1', date: '2024-07-21', workers: 8, labourers: 10, notes: 'Site cleared.' },
+       { id: '2-1', date: '2024-07-21', workers: 8, labourers: 10, muta: 200, machines: 0, notes: 'Site cleared.' },
     ],
   },
 ];
@@ -70,7 +70,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('mason-manager-pro-data', JSON.stringify(places));
       } catch (error) {
         console.error("Failed to save data to localStorage", error);
-        // We can't use toast here directly as it causes an infinite loop
       }
     }
   }, [places, loading]);
@@ -104,10 +103,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
         let newRecords;
         if (existingRecordIndex > -1) {
           newRecords = [...p.records];
-          newRecords[existingRecordIndex] = { ...newRecords[existingRecordIndex], ...recordData };
+          const existingRecord = newRecords[existingRecordIndex];
+          newRecords[existingRecordIndex] = { 
+            ...existingRecord, 
+            ...recordData,
+            muta: recordData.muta ?? existingRecord.muta,
+            machines: recordData.machines ?? existingRecord.machines
+          };
           message = "Today's record updated.";
         } else {
-          const newRecord: DailyRecord = { ...recordData, id: new Date().getTime().toString() };
+          const newRecord: DailyRecord = { 
+            ...recordData, 
+            id: new Date().getTime().toString(),
+            muta: recordData.muta ?? 0,
+            machines: recordData.machines ?? 0,
+          };
           newRecords = [...p.records, newRecord].sort((a, b) => b.date.localeCompare(a.date));
           message = "Today's record saved.";
         }

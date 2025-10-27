@@ -30,7 +30,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { DailyRecord } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { RecordForm } from './RecordForm';
@@ -42,9 +42,11 @@ interface HistoryTableProps {
 }
 
 export function HistoryTable({ records, placeId }: HistoryTableProps) {
-  const { deleteRecord } = useData();
+  const { deleteRecord, getPlaceById } = useData();
   const { toast } = useToast();
   const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
+
+  const place = getPlaceById(placeId);
 
   if (records.length === 0) {
     return (
@@ -66,20 +68,31 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[150px]">Date</TableHead>
+              <TableHead className="w-[120px]">Date</TableHead>
               <TableHead className="text-center">Workers</TableHead>
               <TableHead className="text-center">Labourers</TableHead>
+              <TableHead className="text-center">Muta (₹)</TableHead>
+              <TableHead className="text-center">Machines (₹)</TableHead>
+              <TableHead className="text-center">Total (₹)</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead className="text-right w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {records.map((record) => (
+            {records.map((record) => {
+              const total = (record.workers * (place?.workerRate || 0)) + 
+                            (record.labourers * (place?.labourerRate || 0)) +
+                            record.muta +
+                            record.machines;
+              return (
               <TableRow key={record.id}>
                 <TableCell className="font-medium">{format(parseISO(record.date), 'MMM d, yyyy')}</TableCell>
                 <TableCell className="text-center">{record.workers}</TableCell>
                 <TableCell className="text-center">{record.labourers}</TableCell>
-                <TableCell className="max-w-[300px] truncate">{record.notes || 'N/A'}</TableCell>
+                <TableCell className="text-center">{record.muta.toFixed(2)}</TableCell>
+                <TableCell className="text-center">{record.machines.toFixed(2)}</TableCell>
+                <TableCell className="text-center font-semibold">{total.toFixed(2)}</TableCell>
+                <TableCell className="max-w-[200px] truncate">{record.notes || 'N/A'}</TableCell>
                 <TableCell className="text-right">
                   <Dialog open={editingRecord?.id === record.id} onOpenChange={(isOpen) => !isOpen && setEditingRecord(null)}>
                     <DialogTrigger asChild>
@@ -120,7 +133,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
                   </AlertDialog>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
       </CardContent>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
@@ -9,37 +9,96 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Minus, Plus, Save, ArrowLeft, Loader2 } from 'lucide-react';
+import { Calendar, Save, ArrowLeft, Loader2 } from 'lucide-react';
 import { format, startOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { Place } from '@/lib/types';
 
 export default function PlaceDashboard() {
-  const router = useRouter();
   const params = useParams();
   const { getPlaceById, addOrUpdateRecord, updatePlaceRates, loading } = useData();
   const { toast } = useToast();
   
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const place = useMemo(() => getPlaceById(placeId), [placeId, getPlaceById]);
+  
+  const getPlace = useCallback(() => {
+    return getPlaceById(placeId);
+  }, [getPlaceById, placeId]);
 
+  const [place, setPlace] = useState<Place | undefined>(getPlace());
   const [today, setToday] = useState('');
   const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
+  const [mutaCost, setMutaCost] = useState(0);
+  const [machinesCost, setMachinesCost] = useState(0);
   const [workerRate, setWorkerRate] = useState(0);
   const [labourerRate, setLabourerRate] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    const currentPlace = getPlace();
+    setPlace(currentPlace);
+
     const date = new Date();
-    setToday(format(date, 'yyyy-MM-dd'));
-    if (place) {
-      const todayRecord = place.records.find(r => r.date === format(date, 'yyyy-MM-dd'));
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    setToday(formattedDate);
+
+    if (currentPlace) {
+      const todayRecord = currentPlace.records.find(r => r.date === formattedDate);
       setWorkerCount(todayRecord?.workers || 0);
       setLabourerCount(todayRecord?.labourers || 0);
-      setWorkerRate(place.workerRate);
-      setLabourerRate(place.labourerRate);
+      setMutaCost(todayRecord?.muta || 0);
+      setMachinesCost(todayRecord?.machines || 0);
+      setWorkerRate(currentPlace.workerRate);
+      setLabourerRate(currentPlace.labourerRate);
     }
+  }, [placeId, getPlace, loading]);
+
+  const handleSaveRecord = () => {
+    if (!place) return;
+    setIsSaving(true);
+    const { message } = addOrUpdateRecord(place.id, {
+      date: today,
+      workers: workerCount,
+      labourers: labourerCount,
+      muta: mutaCost,
+      machines: machinesCost,
+    });
+    toast({ title: 'Success', description: message });
+    setTimeout(() => setIsSaving(false), 500);
+  };
+  
+  const handleSaveRates = () => {
+    if (!place) return;
+    updatePlaceRates(place.id, Number(workerRate), Number(labourerRate));
+    toast({ title: 'Success', description: 'Payment rates updated.' });
+  };
+
+  const todayPayment = useMemo(() => {
+    if (!place) return 0;
+    const todayRecord = place.records.find(r => r.date === today);
+    const workersPayment = (todayRecord?.workers || workerCount) * place.workerRate;
+    const labourersPayment = (todayRecord?.labourers || labourerCount) * place.labourerRate;
+    const mutaPayment = todayRecord?.muta || mutaCost;
+    const machinesPayment = todayRecord?.machines || machinesCost;
+    return workersPayment + labourersPayment + mutaPayment + machinesPayment;
+  }, [place, today, workerCount, labourerCount, mutaCost, machinesCost]);
+  
+  const thisWeekPayment = useMemo(() => {
+    if (!place) return 0;
+    const todayDate = new Date();
+    const start = startOfWeek(todayDate);
+    const end = todayDate;
+    const thisWeekRecords = place.records.filter(r => {
+      const recordDate = parseISO(r.date);
+      return isWithinInterval(recordDate, { start, end });
+    });
+
+    return thisWeekRecords.reduce((total, record) => {
+      return total + (record.workers * place.workerRate + record.labourers * place.labourerRate + record.muta + record.machines);
+    }, 0);
   }, [place]);
+
 
   if (loading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -53,37 +112,6 @@ export default function PlaceDashboard() {
       </div>
     );
   }
-
-  const handleSaveRecord = () => {
-    setIsSaving(true);
-    const result = addOrUpdateRecord(place.id, {
-      date: today,
-      workers: workerCount,
-      labourers: labourerCount,
-    });
-    toast({ title: 'Success', description: result.message });
-    setTimeout(() => setIsSaving(false), 500);
-  };
-  
-  const handleSaveRates = () => {
-    updatePlaceRates(place.id, Number(workerRate), Number(labourerRate));
-    toast({ title: 'Success', description: 'Payment rates updated.' });
-  };
-
-  const todayPayment = workerCount * workerRate + labourerCount * labourerRate;
-  
-  const thisWeekRecords = place.records.filter(r => {
-    const recordDate = parseISO(r.date);
-    const todayDate = new Date();
-    const start = startOfWeek(todayDate);
-    const end = todayDate;
-    return isWithinInterval(recordDate, { start, end });
-  });
-
-  const thisWeekPayment = thisWeekRecords.reduce((total, record) => {
-    return total + (record.workers * place.workerRate + record.labourers * place.labourerRate);
-  }, 0);
-
 
   return (
     <div className="container mx-auto p-4 md:p-6">
@@ -101,35 +129,29 @@ export default function PlaceDashboard() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Today's Attendance</CardTitle>
-              <CardDescription>Use the buttons to log the number of workers and labourers for today.</CardDescription>
+              <CardTitle>Today's Log</CardTitle>
+              <CardDescription>Log attendance and other costs for today.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="workers" className="text-lg">Workers</Label>
-                <div className="flex items-center gap-4">
-                  <Button variant="outline" size="icon" onClick={() => setWorkerCount(p => Math.max(0, p - 1))}>
-                    <Minus className="h-5 w-5" />
-                  </Button>
-                  <span id="workers" className="text-2xl font-bold w-12 text-center">{workerCount}</span>
-                  <Button variant="outline" size="icon" onClick={() => setWorkerCount(p => p + 1)}>
-                    <Plus className="h-5 w-5" />
-                  </Button>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="workers">Workers</Label>
+                  <Input id="workers" type="number" value={workerCount} onChange={e => setWorkerCount(Number(e.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="labourers">Labourers</Label>
+                  <Input id="labourers" type="number" value={labourerCount} onChange={e => setLabourerCount(Number(e.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="muta">Muta Work Cost (₹)</Label>
+                  <Input id="muta" type="number" value={mutaCost} onChange={e => setMutaCost(Number(e.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="machines">Machines Cost (₹)</Label>
+                  <Input id="machines" type="number" value={machinesCost} onChange={e => setMachinesCost(Number(e.target.value))} />
                 </div>
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <Label htmlFor="labourers" className="text-lg">Labourers</Label>
-                <div className="flex items-center gap-4">
-                  <Button variant="outline" size="icon" onClick={() => setLabourerCount(p => Math.max(0, p - 1))}>
-                    <Minus className="h-5 w-5" />
-                  </Button>
-                  <span id="labourers" className="text-2xl font-bold w-12 text-center">{labourerCount}</span>
-                  <Button variant="outline" size="icon" onClick={() => setLabourerCount(p => p + 1)}>
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
+              
               <Button onClick={handleSaveRecord} disabled={isSaving} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
                 {place.records.some(r => r.date === today) ? 'Update Today\'s Record' : 'Save Today\'s Record'}
@@ -165,11 +187,11 @@ export default function PlaceDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Payment Calculation</CardTitle>
-              <CardDescription>Live cost estimation based on attendance.</CardDescription>
+              <CardDescription>Live cost estimation based on today's log.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <div>
-                <p className="text-muted-foreground">Today's Payment</p>
+                <p className="text-muted-foreground">Today's Total Payment</p>
                 <p className="text-3xl font-bold text-primary">₹{todayPayment.toFixed(2)}</p>
               </div>
               <Separator />
