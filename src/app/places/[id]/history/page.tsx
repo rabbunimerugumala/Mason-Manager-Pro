@@ -11,12 +11,12 @@ import { ArrowLeft, FileDown, Loader2, Share2 } from 'lucide-react';
 import { generatePdf } from '@/lib/pdf-generator';
 import type { Place } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardFooter } from '@/components/ui/card';
 import { getWeek, getYear, parseISO, format, startOfWeek, endOfWeek, add, subDays, Day } from 'date-fns';
 import { HistoryCard } from '@/components/records/HistoryCard';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { toPng, toJpeg } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 import { useToast } from '@/hooks/use-toast';
 
 function getWeekMonToSat(date: Date) {
@@ -182,5 +182,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-
-    
