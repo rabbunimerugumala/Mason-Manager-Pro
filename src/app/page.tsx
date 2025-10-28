@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2 } from 'lucide-react';
+import { Building2, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AuthPage() {
-  const { users, addUser, loginUser } = useUser();
+  const { users, addUser, loginUser, loading: userLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -22,6 +23,8 @@ export default function AuthPage() {
 
   const [signupName, setSignupName] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
+
+  const [activeTab, setActiveTab] = useState('login');
 
   const handleLogin = () => {
     if (loginUser(loginName, loginPassword)) {
@@ -40,15 +43,44 @@ export default function AuthPage() {
       }
       addUser(signupName.trim(), signupPassword.trim());
       toast({ title: 'Success', description: 'Account created successfully. Please log in.' });
-      // Switch to login tab after successful signup
-      // This is a bit of a hack, might need a better way if tabs are controlled
-      document.querySelector('[data-state="inactive"]')?.scrollIntoView();
+      setActiveTab('login');
       setSignupName('');
       setSignupPassword('');
     } else {
       toast({ variant: 'destructive', title: 'Error', description: 'All fields are required.' });
     }
   };
+
+  if (userLoading) {
+    return (
+       <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+            <div className="w-full max-w-md space-y-6">
+                <div className="flex flex-col items-center justify-center text-center">
+                    <Building2 className="h-12 w-12 text-primary mb-3" />
+                    <h1 className="text-3xl font-bold">Mason Manager Pro</h1>
+                    <p className="text-muted-foreground">Manage your construction sites with ease.</p>
+                </div>
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                           <Skeleton className="h-4 w-1/4" />
+                           <Skeleton className="h-10 w-full" />
+                        </div>
+                         <div className="space-y-2">
+                            <Skeleton className="h-4 w-1/4" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                        <Skeleton className="h-10 w-full" />
+                    </CardContent>
+                </Card>
+            </div>
+       </div>
+    );
+  }
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
@@ -58,7 +90,7 @@ export default function AuthPage() {
             <h1 className="text-3xl font-bold">Mason Manager Pro</h1>
             <p className="text-muted-foreground">Manage your construction sites with ease.</p>
         </div>
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
