@@ -16,6 +16,8 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 const USERS_KEY = 'mason-manager-users';
 const CURRENT_USER_KEY = 'mason-manager-current-user';
+const DATA_PREFIX = 'mason-manager-pro-data-';
+
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
@@ -24,18 +26,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const savedUsers = localStorage.getItem(USERS_KEY);
-      const savedCurrentUser = localStorage.getItem(CURRENT_USER_KEY);
-      
-      if (savedUsers) {
-        setUsers(JSON.parse(savedUsers));
+      // Clear all user and site data
+      const savedUsersRaw = localStorage.getItem(USERS_KEY);
+      if (savedUsersRaw) {
+        const savedUsers = JSON.parse(savedUsersRaw) as User[];
+        savedUsers.forEach(user => {
+          localStorage.removeItem(`${DATA_PREFIX}${user.id}`);
+        });
       }
-      
-      if (savedCurrentUser) {
-        setCurrentUser(JSON.parse(savedCurrentUser));
-      }
+      localStorage.removeItem(USERS_KEY);
+      localStorage.removeItem(CURRENT_USER_KEY);
+
+      // After clearing, set initial state to empty
+      setUsers([]);
+      setCurrentUser(null);
+
     } catch (error) {
-      console.error("Failed to load user data from localStorage", error);
+      console.error("Failed to clear user data from localStorage", error);
     }
     setLoading(false);
   }, []);
@@ -59,13 +66,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const newUser: User = {
       id: new Date().getTime().toString(),
       name,
-      password, // Storing password directly for simplicity with localStorage
+      password,
     };
     setUsers(prev => [...prev, newUser]);
   }, []);
 
   const loginUser = useCallback((name: string, password: string): boolean => {
-    const user = users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.password === password);
+    const lowerCaseName = name.toLowerCase();
+    const user = users.find(u => u.name.toLowerCase() === lowerCaseName && u.password === password);
     if (user) {
       setCurrentUser(user);
       return true;
