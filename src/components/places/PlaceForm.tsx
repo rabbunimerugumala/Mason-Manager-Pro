@@ -49,6 +49,7 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
       toast({ title: 'Success', description: 'New work site created.' });
     }
     setModalOpen(false);
+    form.reset();
   }
 
   return (
@@ -74,7 +75,7 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
             <FormItem>
               <FormLabel>Worker Rate (Rs:/day)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="1000" {...field} />
+                <Input type="number" placeholder="e.g., 1000" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -87,7 +88,7 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
             <FormItem>
               <FormLabel>Labourer Rate (Rs:/day)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="600" {...field} />
+                <Input type="number" placeholder="e.g., 600" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -100,5 +101,3 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
     </Form>
   );
 }
-
-    
