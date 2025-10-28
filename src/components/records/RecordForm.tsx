@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 
 const additionalCostSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
-  amount: z.coerce.number().min(0, 'Amount must be positive.'),
+  amount: z.coerce.number().min(0, 'Amount must be positive.').optional().or(z.literal('')),
 });
 
 const formSchema = z.object({
@@ -41,7 +41,7 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
     defaultValues: {
       workers: record.workers,
       labourers: record.labourers,
-      additionalCosts: record.additionalCosts || [],
+      additionalCosts: record.additionalCosts?.map(c => ({...c, amount: c.amount || ''})) || [],
       notes: record.notes || '',
     },
   });
@@ -53,7 +53,7 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const validCosts = values.additionalCosts?.filter(c => c.description && c.amount > 0) || [];
+    const validCosts = values.additionalCosts?.filter(c => c.description && c.amount).map(c => ({...c, amount: Number(c.amount)})) || [];
     addOrUpdateRecord(placeId, { ...values, date: record.date, additionalCosts: validCosts });
     toast({ title: 'Success', description: 'Record updated.' });
     setModalOpen(false);
@@ -136,7 +136,7 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ description: "", amount: 0 })}
+                onClick={() => append({ description: "", amount: "" })}
                 >
                 <Plus className='mr-2 h-4 w-4' />
                 Add Cost
@@ -164,3 +164,5 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
     </Form>
   );
 }
+
+    

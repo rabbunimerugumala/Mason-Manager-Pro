@@ -32,8 +32,8 @@ export default function PlaceDashboard() {
   const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<Array<Omit<AdditionalCost, 'id'>>>([{ description: '', amount: 0 }]);
-  const [workerRate, setWorkerRate] = useState(0);
-  const [labourerRate, setLabourerRate] = useState(0);
+  const [workerRate, setWorkerRate] = useState<number | ''>(0);
+  const [labourerRate, setLabourerRate] = useState<number | ''>(0);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -50,8 +50,8 @@ export default function PlaceDashboard() {
       setLabourerCount(todayRecord?.labourers || 0);
       const savedCosts = todayRecord?.additionalCosts || [];
       setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(({id, ...rest}) => rest) : [{ description: '', amount: 0 }]);
-      setWorkerRate(currentPlace.workerRate || 0);
-      setLabourerRate(currentPlace.labourerRate || 0);
+      setWorkerRate(currentPlace.workerRate || '');
+      setLabourerRate(currentPlace.labourerRate || '');
     }
   }, [placeId, getPlace, loading]);
 
@@ -172,7 +172,7 @@ export default function PlaceDashboard() {
     <div className="container mx-auto p-4 md:p-6">
       <div className="flex items-center mb-6">
         <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
-            <Link href="/"><ArrowLeft className="h-4 w-4" /></Link>
+            <Link href="/sites"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground truncate">{place.name}</h1>
@@ -262,11 +262,11 @@ export default function PlaceDashboard() {
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="worker-rate">Worker Rate (Rs:)</Label>
-                  <Input id="worker-rate" type="number" value={workerRate || ''} onChange={e => setWorkerRate(Number(e.target.value))} />
+                  <Input id="worker-rate" type="number" placeholder="1000" value={workerRate} onChange={e => setWorkerRate(e.target.value === '' ? '' : Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="labourer-rate">Labourer Rate (Rs:)</Label>
-                  <Input id="labourer-rate" type="number" value={labourerRate || ''} onChange={e => setLabourerRate(Number(e.target.value))} />
+                  <Input id="labourer-rate" type="number" placeholder="600" value={labourerRate} onChange={e => setLabourerRate(e.target.value === '' ? '' : Number(e.target.value))} />
                 </div>
               </div>
               <Button onClick={handleSaveRates} className={cn("w-full btn-gradient-primary")}>
@@ -314,3 +314,5 @@ export default function PlaceDashboard() {
     </div>
   );
 }
+
+    

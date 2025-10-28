@@ -13,8 +13,8 @@ import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  workerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }).default(0),
-  labourerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }).default(0),
+  workerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }).optional().or(z.literal('')),
+  labourerRate: z.coerce.number().min(0, { message: 'Rate must be a positive number.' }).optional().or(z.literal('')),
 });
 
 interface PlaceFormProps {
@@ -30,17 +30,22 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: place?.name || '',
-      workerRate: place?.workerRate || 0,
-      labourerRate: place?.labourerRate || 0,
+      workerRate: place?.workerRate || '',
+      labourerRate: place?.labourerRate || '',
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const data = {
+        ...values,
+        workerRate: Number(values.workerRate) || 0,
+        labourerRate: Number(values.labourerRate) || 0,
+    }
     if (place) {
-      updatePlace({ ...place, ...values });
+      updatePlace({ ...place, ...data });
       toast({ title: 'Success', description: 'Work site updated.' });
     } else {
-      addPlace(values);
+      addPlace(data);
       toast({ title: 'Success', description: 'New work site created.' });
     }
     setModalOpen(false);
@@ -95,3 +100,5 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
     </Form>
   );
 }
+
+    
