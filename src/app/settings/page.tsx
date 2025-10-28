@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { useData } from '@/contexts/DataContext';
@@ -18,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
@@ -58,9 +59,14 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto max-w-2xl p-4 md:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your application settings.</p>
+      <div className="flex items-center mb-6">
+         <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
+            <Link href="/sites"><ArrowLeft className="h-4 w-4" /></Link>
+        </Button>
+        <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Settings</h1>
+            <p className="text-muted-foreground">Manage your application settings.</p>
+        </div>
       </div>
 
       <Card className="border-destructive">

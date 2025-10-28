@@ -45,7 +45,4 @@
   .btn-gradient-primary {
     @apply bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700;
   }
-  .btn-gradient-accent {
-     @apply bg-gradient-to-r from-green-400 to-blue-500 text-white hover:from-green-500 hover:to-blue-600;
-  }
 }
