@@ -20,3 +20,8 @@ export interface Place {
   labourerRate: number;
   records: DailyRecord[];
 }
+
+export interface User {
+  id: string;
+  name: string;
+}

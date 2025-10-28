@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,13 @@ import { format, startOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Place, AdditionalCost } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/contexts/UserContext';
 
 
 export default function PlaceDashboard() {
   const params = useParams();
+  const router = useRouter();
+  const { currentUser } = useUser();
   const { getPlaceById, addOrUpdateRecord, updatePlaceRates, loading } = useData();
   const { toast } = useToast();
   
@@ -27,7 +30,7 @@ export default function PlaceDashboard() {
     return getPlaceById(placeId);
   }, [getPlaceById, placeId]);
 
-  const [place, setPlace] = useState<Place | undefined>(getPlace());
+  const [place, setPlace] = useState<Place | undefined>(undefined);
   const [today, setToday] = useState('');
   const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
@@ -35,6 +38,12 @@ export default function PlaceDashboard() {
   const [workerRate, setWorkerRate] = useState(0);
   const [labourerRate, setLabourerRate] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser) {
+      router.push('/');
+    }
+  }, [currentUser, router]);
 
   useEffect(() => {
     const currentPlace = getPlace();
@@ -135,7 +144,7 @@ export default function PlaceDashboard() {
   }, [place]);
 
 
-  if (loading) {
+  if (loading || !currentUser) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -143,7 +152,7 @@ export default function PlaceDashboard() {
     return (
       <div className="container mx-auto p-4 md:p-6 text-center">
         <h2 className="text-2xl font-bold">Place not found</h2>
-        <Button asChild variant="link" className="mt-4"><Link href="/">Go back to dashboard</Link></Button>
+        <Button asChild variant="link" className="mt-4"><Link href="/sites">Go back to sites</Link></Button>
       </div>
     );
   }
@@ -172,7 +181,7 @@ export default function PlaceDashboard() {
     <div className="container mx-auto p-4 md:p-6">
       <div className="flex items-center mb-6">
         <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
-            <Link href="/"><ArrowLeft className="h-4 w-4" /></Link>
+            <Link href="/sites"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground truncate">{place.name}</h1>

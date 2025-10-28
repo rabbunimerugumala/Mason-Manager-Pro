@@ -1,9 +1,8 @@
-
 'use client';
 
-import { useMemo, useCallback, useRef } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useData } from '@/contexts/DataContext';
 import { HistoryTable } from '@/components/records/HistoryTable';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toJpeg } from 'html-to-image';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/contexts/UserContext';
 
 function getWeekMonToSat(date: Date) {
     const weekStartsOn: Day = 1; // Monday
@@ -28,11 +28,19 @@ function getWeekMonToSat(date: Date) {
 
 export default function HistoryPage() {
   const params = useParams();
+  const router = useRouter();
+  const { currentUser } = useUser();
   const { getPlaceById, loading } = useData();
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
   const weeklyReportRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (!currentUser) {
+      router.push('/');
+    }
+  }, [currentUser, router]);
 
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const place = useMemo(() => getPlaceById(placeId), [placeId, getPlaceById]);
@@ -95,7 +103,7 @@ export default function HistoryPage() {
     }, {} as Record<string, { records: any[], weekLabel: string, total: number }>);
   }, [place]);
 
-  if (loading) {
+  if (loading || !currentUser) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
@@ -103,7 +111,7 @@ export default function HistoryPage() {
     return (
       <div className="container mx-auto p-4 md:p-6 text-center">
         <h2 className="text-2xl font-bold">Place not found</h2>
-        <Button asChild variant="link" className="mt-4"><Link href="/">Go back to dashboard</Link></Button>
+        <Button asChild variant="link" className="mt-4"><Link href="/sites">Go back to sites</Link></Button>
       </div>
     );
   }

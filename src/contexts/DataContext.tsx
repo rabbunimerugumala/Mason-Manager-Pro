@@ -1,8 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Place, DailyRecord, AdditionalCost } from '@/lib/types';
+import { Place, DailyRecord, AdditionalCost, User } from '@/lib/types';
 import { subDays, format } from 'date-fns';
+import { useUser } from './UserContext';
 
 interface DataContextType {
   places: Place[];
@@ -14,6 +15,7 @@ interface DataContextType {
   addOrUpdateRecord: (placeId: string, record: Omit<DailyRecord, 'id' | 'additionalCosts'> & { additionalCosts?: Omit<AdditionalCost, 'id'>[] }) => { success: boolean; message: string };
   deleteRecord: (placeId: string, recordId: string) => void;
   updatePlaceRates: (placeId: string, workerRate: number, labourerRate: number) => void;
+  clearData: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -23,85 +25,86 @@ const generateMockRecords = () => {
   for (let i = 0; i < 15; i++) {
     const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
     records.push({
-      id: `1-${i + 1}`,
+      id: `rec-${Date.now()}-${i}`,
       date: date,
       workers: Math.floor(Math.random() * 5) + 8,
       labourers: Math.floor(Math.random() * 8) + 10,
-      additionalCosts: Math.random() > 0.5 ? [{ id: `ac-${i}`, description: 'Cement', amount: Math.floor(Math.random() * 1000) + 500 }] : [],
+      additionalCosts: Math.random() > 0.5 ? [{ id: `ac-${Date.now()}-${i}`, description: 'Cement', amount: Math.floor(Math.random() * 1000) + 500 }] : [],
     });
   }
   return records;
 };
 
-const initialPlaces: Place[] = [
-  {
-    id: '1',
-    name: 'Downtown Skyscraper',
-    workerRate: 1000,
-    labourerRate: 600,
-    records: generateMockRecords(),
-  },
-  {
-    id: '2',
-    name: 'Suburban Villa Complex',
-    workerRate: 900,
-    labourerRate: 550,
-    records: [
-       { id: '2-1', date: format(new Date(), 'yyyy-MM-dd'), workers: 8, labourers: 10, additionalCosts: [] },
-    ],
-  },
-];
+const getInitialData = (user: User | null): Place[] => {
+  if (!user) return [];
+  return [
+    {
+      id: '1',
+      name: `Downtown Skyscraper (${user.name.split(' ')[0]})`,
+      workerRate: 1000,
+      labourerRate: 600,
+      records: generateMockRecords(),
+    },
+    {
+      id: '2',
+      name: `Suburban Villa (${user.name.split(' ')[0]})`,
+      workerRate: 900,
+      labourerRate: 550,
+      records: [
+         { id: '2-1', date: format(new Date(), 'yyyy-MM-dd'), workers: 8, labourers: 10, additionalCosts: [] },
+      ],
+    },
+  ];
+};
+
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { currentUser } = useUser();
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const getDataKey = useCallback(() => {
+    return currentUser ? `mason-manager-pro-data-${currentUser.id}` : null;
+  }, [currentUser]);
+  
   useEffect(() => {
+    const dataKey = getDataKey();
+    if (!dataKey) {
+        setPlaces([]);
+        setLoading(false);
+        return;
+    };
+
+    setLoading(true);
     try {
-      const savedData = localStorage.getItem('mason-manager-pro-data');
+      const savedData = localStorage.getItem(dataKey);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        if (parsedData.length > 0) {
-             const restoredPlaces = parsedData.map((p:any) => ({
-              ...p,
-              records: p.records.map((r: any) => ({
-                id: r.id,
-                date: r.date,
-                workers: r.workers,
-                labourers: r.labourers,
-                additionalCosts: r.additionalCosts || [],
-                // This ensures backward compatibility with old data structure
-                ...(r.muta && { additionalCosts: [...(r.additionalCosts || []), {id: `muta-${r.id}`, description: 'Muta', amount: r.muta}] }),
-                ...(r.machines && { additionalCosts: [...(r.additionalCosts || []), {id: `machines-${r.id}`, description: 'Machines', amount: r.machines}] }),
-              })).map(({ muta, machines, ...rest }: any) => rest), // remove old fields
-            }));
-            setPlaces(restoredPlaces);
+        if (parsedData && parsedData.length > 0) {
+            setPlaces(parsedData);
         } else {
-            setPlaces(initialPlaces);
+            setPlaces(getInitialData(currentUser));
         }
       } else {
-        setPlaces(initialPlaces);
+        setPlaces(getInitialData(currentUser));
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
-      setPlaces(initialPlaces);
+      setPlaces(getInitialData(currentUser));
     }
     setLoading(false);
-  }, []);
+  }, [currentUser, getDataKey]);
 
   useEffect(() => {
-    if (!loading) {
+    const dataKey = getDataKey();
+    if (!loading && dataKey) {
       try {
-        const dataToSave = places.map(p => ({
-            ...p,
-            records: p.records.map(({muta, machines, ...rest}) => rest) // Ensure old fields are not saved
-        }));
-        localStorage.setItem('mason-manager-pro-data', JSON.stringify(dataToSave));
+        localStorage.setItem(dataKey, JSON.stringify(places));
       } catch (error) {
         console.error("Failed to save data to localStorage", error);
       }
     }
-  }, [places, loading]);
+  }, [places, loading, getDataKey]);
 
   const addPlace = useCallback((placeData: Omit<Place, 'id' | 'records'>) => {
     const newPlace: Place = {
@@ -178,7 +181,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setPlaces(prev => prev.map(p => p.id === placeId ? { ...p, workerRate, labourerRate } : p));
   }, []);
 
-  const value = { places, loading, addPlace, updatePlace, deletePlace, getPlaceById, addOrUpdateRecord, deleteRecord, updatePlaceRates };
+  const clearData = useCallback(() => {
+    setPlaces([]);
+  }, []);
+
+  const value = { places, loading, addPlace, updatePlace, deletePlace, getPlaceById, addOrUpdateRecord, deleteRecord, updatePlaceRates, clearData };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
