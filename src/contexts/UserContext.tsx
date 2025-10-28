@@ -7,8 +7,8 @@ interface UserContextType {
   users: User[];
   currentUser: User | null;
   loading: boolean;
-  addUser: (name: string) => void;
-  selectUser: (userId: string) => void;
+  addUser: (name: string, password: string) => void;
+  loginUser: (name: string, password: string) => boolean;
   clearCurrentUser: () => void;
 }
 
@@ -55,26 +55,29 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [users, currentUser, loading]);
 
-  const addUser = useCallback((name: string) => {
+  const addUser = useCallback((name: string, password: string) => {
     const newUser: User = {
       id: new Date().getTime().toString(),
       name,
+      password, // Storing password directly for simplicity with localStorage
     };
     setUsers(prev => [...prev, newUser]);
   }, []);
 
-  const selectUser = useCallback((userId: string) => {
-    const user = users.find(u => u.id === userId);
+  const loginUser = useCallback((name: string, password: string): boolean => {
+    const user = users.find(u => u.name.toLowerCase() === name.toLowerCase() && u.password === password);
     if (user) {
       setCurrentUser(user);
+      return true;
     }
+    return false;
   }, [users]);
   
   const clearCurrentUser = useCallback(() => {
       setCurrentUser(null);
   }, []);
 
-  const value = { users, currentUser, loading, addUser, selectUser, clearCurrentUser };
+  const value = { users, currentUser, loading, addUser, loginUser, clearCurrentUser };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
