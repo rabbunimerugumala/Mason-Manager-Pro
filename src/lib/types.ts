@@ -24,5 +24,5 @@ export interface Place {
 export interface User {
   id: string;
   name: string;
-  password?: string; // Made optional for now to not break existing structure immediately
+  password?: string;
 }

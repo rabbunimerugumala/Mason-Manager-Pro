@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Loader2 } from 'lucide-react';
+import { Building2, Eye, EyeOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AuthPage() {
@@ -25,8 +25,14 @@ export default function AuthPage() {
   const [signupPassword, setSignupPassword] = useState('');
 
   const [activeTab, setActiveTab] = useState('login');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
 
   const handleLogin = () => {
+    if (!loginName || !loginPassword) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter both username and password.' });
+      return;
+    }
     if (loginUser(loginName, loginPassword)) {
       toast({ title: 'Success', description: 'Logged in successfully.' });
       router.push('/sites');
@@ -36,19 +42,21 @@ export default function AuthPage() {
   };
 
   const handleSignup = () => {
-    if (signupName.trim() && signupPassword.trim()) {
-       if (users.some(u => u.name.toLowerCase() === signupName.trim().toLowerCase())) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Username already exists.' });
-        return;
-      }
-      addUser(signupName.trim(), signupPassword.trim());
-      toast({ title: 'Success', description: 'Account created successfully. Please log in.' });
-      setActiveTab('login');
-      setSignupName('');
-      setSignupPassword('');
-    } else {
+    if (!signupName.trim() || !signupPassword.trim()) {
       toast({ variant: 'destructive', title: 'Error', description: 'All fields are required.' });
+      return;
     }
+    if (users.some(u => u.name.toLowerCase() === signupName.trim().toLowerCase())) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Username already exists.' });
+      return;
+    }
+    addUser(signupName.trim(), signupPassword.trim());
+    toast({ title: 'Success', description: 'Account created successfully. Please log in.' });
+    setLoginName(signupName.trim());
+    setLoginPassword('');
+    setActiveTab('login');
+    setSignupName('');
+    setSignupPassword('');
   };
 
   if (userLoading) {
@@ -112,16 +120,25 @@ export default function AuthPage() {
                     onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   />
                 </div>
-                 <div className="space-y-2">
+                 <div className="space-y-2 relative">
                   <Label htmlFor="login-password">Password</Label>
                   <Input
                     id="login-password"
-                    type="password"
+                    type={showLoginPassword ? 'text' : 'password'}
                     placeholder="********"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 bottom-1 h-8 w-8 text-muted-foreground"
+                    onClick={() => setShowLoginPassword(prev => !prev)}
+                  >
+                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                 </div>
                 <Button onClick={handleLogin} className={cn('w-full btn-gradient-primary')}>Login</Button>
               </CardContent>
@@ -143,16 +160,25 @@ export default function AuthPage() {
                     onChange={(e) => setSignupName(e.target.value)}
                   />
                 </div>
-                 <div className="space-y-2">
+                 <div className="space-y-2 relative">
                   <Label htmlFor="signup-password">Password</Label>
                   <Input
                     id="signup-password"
-                    type="password"
+                    type={showSignupPassword ? 'text' : 'password'}
                     placeholder="Create a password"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
                   />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 bottom-1 h-8 w-8 text-muted-foreground"
+                    onClick={() => setShowSignupPassword(prev => !prev)}
+                  >
+                    {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                 </div>
                 <Button onClick={handleSignup} className={cn('w-full btn-gradient-primary')}>Sign Up</Button>
               </CardContent>
