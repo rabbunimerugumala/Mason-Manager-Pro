@@ -35,19 +35,12 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
   const { addOrUpdateRecord } = useData();
   const { toast } = useToast();
 
-  const allAdditionalCosts = [
-      ...(record.muta > 0 ? [{description: 'Muta', amount: record.muta}] : []),
-      ...(record.machines > 0 ? [{description: 'Machines', amount: record.machines}] : []),
-      ...(record.additionalCosts || [])
-  ]
-
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       workers: record.workers,
       labourers: record.labourers,
-      additionalCosts: allAdditionalCosts,
+      additionalCosts: record.additionalCosts || [],
       notes: record.notes || '',
     },
   });
@@ -59,7 +52,8 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    addOrUpdateRecord(placeId, { ...values, date: record.date, muta: 0, machines: 0 });
+    const validCosts = values.additionalCosts?.filter(c => c.description && c.amount > 0) || [];
+    addOrUpdateRecord(placeId, { ...values, date: record.date, additionalCosts: validCosts });
     toast({ title: 'Success', description: 'Record updated.' });
     setModalOpen(false);
   }

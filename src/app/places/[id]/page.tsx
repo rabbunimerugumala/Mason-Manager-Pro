@@ -49,7 +49,7 @@ export default function PlaceDashboard() {
       setWorkerCount(todayRecord?.workers || 0);
       setLabourerCount(todayRecord?.labourers || 0);
       const savedCosts = todayRecord?.additionalCosts || [];
-      setAdditionalCosts(savedCosts.length > 0 ? savedCosts : [{ description: '', amount: 0 }]);
+      setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(({id, ...rest}) => rest) : [{ description: '', amount: 0 }]);
       setWorkerRate(currentPlace.workerRate || 0);
       setLabourerRate(currentPlace.labourerRate || 0);
     }
@@ -63,12 +63,14 @@ export default function PlaceDashboard() {
       date: today,
       workers: workerCount,
       labourers: labourerCount,
-      muta: 0, // Deprecated, but kept for data compatibility
-      machines: 0, // Deprecated
       additionalCosts: validAdditionalCosts,
     });
     toast({ title: 'Success', description: message });
-    setTimeout(() => setIsSaving(false), 500);
+    setTimeout(() => {
+        setIsSaving(false);
+        const updatedPlace = getPlace();
+        if(updatedPlace) setPlace(updatedPlace);
+    }, 500);
   };
   
   const handleSaveRates = () => {
@@ -93,6 +95,10 @@ export default function PlaceDashboard() {
   };
   
   const removeAdditionalCostField = (index: number) => {
+    if (additionalCosts.length === 1 && index === 0) {
+        setAdditionalCosts([{ description: '', amount: 0 }]);
+        return;
+    }
     const newCosts = additionalCosts.filter((_, i) => i !== index);
     setAdditionalCosts(newCosts);
   };
@@ -109,19 +115,22 @@ export default function PlaceDashboard() {
   const thisWeekPayment = useMemo(() => {
     if (!place) return 0;
     const todayDate = new Date();
-    const start = startOfWeek(todayDate);
+    const start = startOfWeek(todayDate, { weekStartsOn: 1 });
     const end = todayDate;
     const thisWeekRecords = place.records.filter(r => {
-      const recordDate = parseISO(r.date);
-      return isWithinInterval(recordDate, { start, end });
+      try {
+        const recordDate = parseISO(r.date);
+        return isWithinInterval(recordDate, { start, end });
+      } catch (e) {
+        return false;
+      }
     });
 
     return thisWeekRecords.reduce((total, record) => {
       const workerTotal = record.workers * (place.workerRate || 0);
       const labourerTotal = record.labourers * (place.labourerRate || 0);
-      const oldCosts = (record.muta || 0) + (record.machines || 0);
       const newAdditionalCosts = (record.additionalCosts || []).reduce((acc, cost) => acc + (cost.amount || 0), 0);
-      return total + workerTotal + labourerTotal + oldCosts + newAdditionalCosts;
+      return total + workerTotal + labourerTotal + newAdditionalCosts;
     }, 0);
   }, [place]);
 
@@ -225,7 +234,6 @@ export default function PlaceDashboard() {
                             size="icon" 
                             onClick={() => removeAdditionalCostField(index)}
                             className="text-destructive hover:text-destructive h-10 w-10"
-                            disabled={additionalCosts.length === 1 && index === 0}
                            >
                             <Trash2 className="h-4 w-4" />
                           </Button>

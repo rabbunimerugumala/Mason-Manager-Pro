@@ -9,8 +9,6 @@ export interface DailyRecord {
   date: string; // ISO string 'YYYY-MM-DD'
   workers: number;
   labourers: number;
-  muta: number;
-  machines: number;
   additionalCosts: AdditionalCost[];
   notes?: string;
 }

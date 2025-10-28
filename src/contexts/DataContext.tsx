@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Place, DailyRecord, AdditionalCost } from '@/lib/types';
+import { subDays, format } from 'date-fns';
 
 interface DataContextType {
   places: Place[];
@@ -17,16 +18,28 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+const generateMockRecords = () => {
+  const records = [];
+  for (let i = 0; i < 15; i++) {
+    const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+    records.push({
+      id: `1-${i + 1}`,
+      date: date,
+      workers: Math.floor(Math.random() * 5) + 8,
+      labourers: Math.floor(Math.random() * 8) + 10,
+      additionalCosts: Math.random() > 0.5 ? [{ id: `ac-${i}`, description: 'Cement', amount: Math.floor(Math.random() * 1000) + 500 }] : [],
+    });
+  }
+  return records;
+};
+
 const initialPlaces: Place[] = [
   {
     id: '1',
     name: 'Downtown Skyscraper',
     workerRate: 1000,
     labourerRate: 600,
-    records: [
-      { id: '1-1', date: '2024-07-20', workers: 10, labourers: 15, muta: 500, machines: 1200, notes: 'Foundation work started.', additionalCosts: [{id: 'ac-1', description: 'Cement Bags', amount: 5000}] },
-      { id: '1-2', date: '2024-07-21', workers: 12, labourers: 18, muta: 0, machines: 1500, notes: 'Heavy rain in the afternoon.', additionalCosts: [] },
-    ],
+    records: generateMockRecords(),
   },
   {
     id: '2',
@@ -34,11 +47,10 @@ const initialPlaces: Place[] = [
     workerRate: 900,
     labourerRate: 550,
     records: [
-       { id: '2-1', date: '2024-07-21', workers: 8, labourers: 10, muta: 200, machines: 0, notes: 'Site cleared.', additionalCosts: [] },
+       { id: '2-1', date: format(new Date(), 'yyyy-MM-dd'), workers: 8, labourers: 10, additionalCosts: [] },
     ],
   },
 ];
-
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [places, setPlaces] = useState<Place[]>([]);
@@ -50,13 +62,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         if (parsedData.length > 0) {
-            setPlaces(parsedData.map((p:Place) => ({
+             const restoredPlaces = parsedData.map((p:any) => ({
               ...p,
-              records: p.records.map(r => ({
-                ...r,
-                additionalCosts: r.additionalCosts || []
-              }))
-            })));
+              records: p.records.map((r: any) => ({
+                id: r.id,
+                date: r.date,
+                workers: r.workers,
+                labourers: r.labourers,
+                additionalCosts: r.additionalCosts || [],
+                // This ensures backward compatibility with old data structure
+                ...(r.muta && { additionalCosts: [...(r.additionalCosts || []), {id: `muta-${r.id}`, description: 'Muta', amount: r.muta}] }),
+                ...(r.machines && { additionalCosts: [...(r.additionalCosts || []), {id: `machines-${r.id}`, description: 'Machines', amount: r.machines}] }),
+              })).map(({ muta, machines, ...rest }: any) => rest), // remove old fields
+            }));
+            setPlaces(restoredPlaces);
         } else {
             setPlaces(initialPlaces);
         }
@@ -73,7 +92,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading) {
       try {
-        localStorage.setItem('mason-manager-pro-data', JSON.stringify(places));
+        const dataToSave = places.map(p => ({
+            ...p,
+            records: p.records.map(({muta, machines, ...rest}) => rest) // Ensure old fields are not saved
+        }));
+        localStorage.setItem('mason-manager-pro-data', JSON.stringify(dataToSave));
       } catch (error) {
         console.error("Failed to save data to localStorage", error);
       }
@@ -110,7 +133,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const existingRecordIndex = p.records.findIndex(r => r.date === recordData.date);
         let newRecords;
 
-        const newAdditionalCosts = (recordData.additionalCosts || []).map(cost => ({
+        const newAdditionalCosts = (recordData.additionalCosts || [])
+          .filter(cost => cost.description && cost.amount > 0)
+          .map(cost => ({
             ...cost,
             id: new Date().getTime().toString() + Math.random(),
         }));
@@ -121,17 +146,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
           newRecords[existingRecordIndex] = { 
             ...existingRecord, 
             ...recordData,
-            muta: recordData.muta ?? existingRecord.muta,
-            machines: recordData.machines ?? existingRecord.machines,
-            additionalCosts: newAdditionalCosts.length > 0 ? newAdditionalCosts : (existingRecord.additionalCosts || []),
+            additionalCosts: newAdditionalCosts,
           };
           message = "Today's record updated.";
         } else {
           const newRecord: DailyRecord = { 
             ...recordData, 
             id: new Date().getTime().toString(),
-            muta: recordData.muta ?? 0,
-            machines: recordData.machines ?? 0,
             additionalCosts: newAdditionalCosts,
           };
           newRecords = [...p.records, newRecord].sort((a, b) => b.date.localeCompare(a.date));
