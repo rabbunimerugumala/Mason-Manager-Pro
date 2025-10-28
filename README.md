@@ -16,6 +16,22 @@ Mason Manager Pro is a modern, responsive web application built with Next.js, de
 -   **Persistent Local Storage**: All your data is automatically saved in the browser's local storage, so you never lose your records.
 -   **Consistent & Modern UI**: The application uses a consistent design language with gradient buttons and a professional color palette, built with ShadCN UI and Tailwind CSS.
 
+## Tech Stack
+
+This project is built with a modern, robust, and scalable tech stack:
+
+-   **Framework**: [Next.js](https://nextjs.org/) (using the App Router)
+-   **Language**: [TypeScript](https://www.typescriptlang.org/)
+-   **UI Components**: [ShadCN UI](https://ui.shadcn.com/)
+-   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+-   **State Management**: React Context API with `useState`, `useEffect`, and `useCallback` hooks for clean and efficient state management across the app. Data is persisted in the browser's `localStorage`.
+-   **Forms**: [React Hook Form](https://react-hook-form.com/) for performant and flexible form handling.
+-   **Schema Validation**: [Zod](https://zod.dev/) for validating form data and ensuring type safety.
+-   **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF) and [jsPDF-AutoTable](https://github.com/simonbengtsson/jsPDF-AutoTable) for creating detailed, exportable PDF reports.
+-   **Image Generation**: [html-to-image](https://github.com/bubkoo/html-to-image) for converting weekly report components into shareable JPG images.
+-   **Date & Time**: [date-fns](https://date-fns.org/) for reliable and consistent date manipulation, crucial for grouping records by week.
+-   **Icons**: [Lucide React](https://lucide.dev/) for a clean and consistent set of icons.
+
 ## Application Flow
 
 The user journey is designed to be simple and intuitive:
@@ -78,7 +94,7 @@ The project follows a standard Next.js App Router structure.
 
 -   **`layout.tsx`**: The main application layout. It sets up the HTML structure, includes the global stylesheet, and wraps all pages with the `DataProvider` for state management.
 -   **`page.tsx`**: The home page. It fetches the list of work sites from `DataContext` and displays them using the `PlaceCard` component. It also contains the dialog for creating a new site.
--   **`globals.css`**: Defines global styles, customizes the application's color theme using CSS variables, and includes custom gradient button classes (`btn-gradient-primary`).
+-   **`globals.css`**: Defines global styles, customizes the application's color theme using CSS variables, and includes the custom gradient button class (`btn-gradient-primary`).
 
 ### `src/app/places/[id]/`
 
