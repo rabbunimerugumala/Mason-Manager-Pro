@@ -1,20 +1,42 @@
 # Mason Manager Pro
 
-This is a Next.js application designed to help manage daily worker and labourer attendance, wages, and work sites. It provides a user-friendly interface to track daily records, additional costs like machine and muta work, and calculate payments.
+Mason Manager Pro is a modern, responsive web application built with Next.js, designed to help construction site managers or contractors easily track daily worker and labourer attendance, manage wages, and log miscellaneous expenses for multiple work sites. It features a clean, user-friendly interface that works seamlessly on both desktop and mobile devices.
 
 ## Features
 
-- **Work Site Management**: Create, edit, and delete construction work sites.
-- **Daily Records**: Log daily attendance for workers and labourers.
-- **Cost Tracking**: Record additional daily costs for specialized (muta) work and machinery.
-- **Rate Management**: Set and update payment rates for workers and labourers at each site.
-- **Payment Calculation**: Automatically calculates daily and weekly payments based on records and rates.
-- **History Log**: View, edit, and delete historical records for each site.
-- **Local Storage**: All data is persisted in the browser's local storage.
+-   **Multi-Site Management**: Create, edit, and delete multiple construction work sites, each with its own specific payment rates.
+-   **Daily Attendance Tracking**: Easily log the number of workers and labourers present on any given day using a simple counter interface.
+-   **Dynamic Cost Logging**: Add, edit, and delete an unlimited number of additional daily costs (e.g., "Cement bags," "Machine rental") with descriptions and amounts.
+-   **Rate Customization**: Set and update the daily payment rates for workers and labourers on a per-site basis.
+-   **Automated Payment Calculation**: The app automatically calculates total payments for the current day and the current week in real-time.
+-   **Weekly Grouped History**: View a complete history of all records, neatly organized and grouped by week (from Monday to Saturday). Each week displays a sub-total for easy review.
+-   **PDF Export**: Generate a professional, detailed PDF report of the entire history for a work site, including weekly totals and a grand total. This is perfect for record-keeping and sharing.
+-   **Share as JPG**: Share a summary of any specific week's work as a downloadable JPG image, ideal for quick updates via messaging apps.
+-   **Fully Mobile-Responsive**: The UI is optimized for all screen sizes, ensuring a seamless experience whether you are on a phone, tablet, or desktop.
+-   **Persistent Local Storage**: All your data is automatically saved in the browser's local storage, so you never lose your records.
+-   **Consistent & Modern UI**: The application uses a consistent design language with gradient buttons and a professional color palette, built with ShadCN UI and Tailwind CSS.
 
-## Project Structure
+## Application Flow
 
-The project is structured as a standard Next.js application using the App Router.
+The user journey is designed to be simple and intuitive:
+
+1.  **Home Page**: The user lands on the home page, where they can see a list of all their existing work sites. From here, they can create a new site or choose an existing one to manage.
+2.  **Create a Work Site**: By clicking "Create Site," the user can enter a name and set the daily rates for workers and labourers for that new site.
+3.  **Site Dashboard**: After selecting a site, the user is taken to its dashboard. This is the main control center where they can:
+    -   Log today's attendance for workers and labourers.
+    -   Add any number of additional costs for the day.
+    -   Update the payment rates for that specific site.
+    -   See live calculations for "Today's Total Payment" and "This Week's Total."
+4.  **View History**: From the dashboard, the user can navigate to the "History Log."
+5.  **History Page**: This page displays all past records, grouped by week. The user can:
+    -   Expand or collapse each week to see daily entries.
+    -   Export the entire site history as a PDF.
+    -   Share a specific week's summary as a JPG image.
+    -   Edit or delete any individual past record.
+
+## Project Structure & File Descriptions
+
+The project follows a standard Next.js App Router structure.
 
 ```
 .
@@ -23,78 +45,69 @@ The project is structured as a standard Next.js application using the App Router
 │   │   ├── places
 │   │   │   ├── [id]
 │   │   │   │   ├── history
-│   │   │   │   │   └── page.tsx      # Page to show record history for a specific site
-│   │   │   │   └── page.tsx          # Dashboard page for a specific work site
-│   │   ├── globals.css           # Global styles and Tailwind CSS configuration
+│   │   │   │   │   └── page.tsx      # Displays weekly grouped history for a site
+│   │   │   │   └── page.tsx          # Main dashboard for a specific work site
+│   │   ├── globals.css           # Global styles, Tailwind CSS, and custom gradients
 │   │   ├── layout.tsx            # Root layout for the application
 │   │   └── page.tsx              # Home page displaying all work sites
 │   ├── components
 │   │   ├── layout
 │   │   │   └── Header.tsx          # The header component for the app
 │   │   ├── places
-│   │   │   ├── PlaceCard.tsx       # Card component to display a single work site
+│   │   │   ├── PlaceCard.tsx       # Card component for a single work site on the home page
 │   │   │   └── PlaceForm.tsx       # Form for creating and editing work sites
 │   │   ├── records
-│   │   │   ├── HistoryTable.tsx    # Table to display historical records
-│   │   │   └── RecordForm.tsx      # Form for editing a daily record
-│   │   └── ui                      # ShadCN UI components
+│   │   │   ├── HistoryCard.tsx     # Card component for a single record (mobile view)
+│   │   │   ├── HistoryTable.tsx    # Table for historical records (desktop view)
+│   │   │   └── RecordForm.tsx      # Form for editing a specific daily record
+│   │   └── ui                      # Reusable ShadCN UI components
 │   ├── contexts
-│   │   └── DataContext.tsx         # React Context for managing application state
+│   │   └── DataContext.tsx         # Global state management with React Context
 │   ├── hooks
-│   │   ├── use-mobile.tsx        # Hook to detect if the user is on a mobile device
-│   │   └── use-toast.ts          # Hook for showing toast notifications
+│   │   ├── use-mobile.tsx        # Custom hook to detect mobile devices
+│   │   └── use-toast.ts          # Custom hook for displaying toast notifications
 │   └── lib
+│       ├── pdf-generator.ts      # Logic for generating PDF reports
 │       ├── types.ts              # TypeScript type definitions for the application
-│       └── utils.ts              # Utility functions, including `cn` for classnames
-├── public                        # Static assets
+│       └── utils.ts              # Utility functions (`cn` for classnames)
+├── package.json                  # Project dependencies and scripts
 └── tailwind.config.ts            # Tailwind CSS configuration
 ```
 
-## File Descriptions
-
 ### `src/app/`
 
--   **`layout.tsx`**: The main layout of the application. It includes the HTML structure, adds the global stylesheet, and wraps the content in the `DataProvider` to make state available globally.
--   **`page.tsx`**: The homepage of the application. It displays a list of all created work sites using the `PlaceCard` component and provides a dialog to create a new work site.
--   **`globals.css`**: Defines the global styles and customizes the color palette for the application using CSS variables for Tailwind CSS.
+-   **`layout.tsx`**: The main application layout. It sets up the HTML structure, includes the global stylesheet, and wraps all pages with the `DataProvider` for state management.
+-   **`page.tsx`**: The home page. It fetches the list of work sites from `DataContext` and displays them using the `PlaceCard` component. It also contains the dialog for creating a new site.
+-   **`globals.css`**: Defines global styles, customizes the application's color theme using CSS variables, and includes custom gradient button classes (`btn-gradient-primary`).
 
 ### `src/app/places/[id]/`
 
--   **`page.tsx`**: This is the main dashboard for a single work site. It allows users to:
-    -   Log the number of workers and labourers for the current day.
-    -   Log costs for 'muta' work and 'machines'.
-    -   Update the payment rates for workers and labourers.
-    -   View real-time payment calculations for the day and the week.
-    -   Navigate to the full history page.
--   **`history/page.tsx`**: This page displays a complete history of all records for a specific work site in a tabular format using the `HistoryTable` component.
+-   **`page.tsx`**: The dashboard for a single work site. This is where users log daily attendance, add custom costs, and update payment rates. It features real-time payment calculations for the day and week.
+-   **`history/page.tsx`**: The history page for a specific site. It groups records by week (Mon-Sat), calculates weekly totals, and provides options to export the entire history as a PDF or share a specific week's summary as a JPG. It responsively switches between `HistoryTable` (desktop) and `HistoryCard` (mobile).
 
 ### `src/components/`
 
--   **`layout/Header.tsx`**: A simple header component that displays the application title and logo.
--   **`places/PlaceCard.tsx`**: A card component that provides a summary of a work site on the homepage, including current rates and links to manage, edit, or delete the site.
--   **`places/PlaceForm.tsx`**: A reusable form for both creating new work sites and editing existing ones. It uses `react-hook-form` and `zod` for validation.
--   **`records/HistoryTable.tsx`**: Displays all historical records for a site, including workers, labourers, muta costs, machine costs, and total daily cost. It allows for editing or deleting individual records.
--   **`records/RecordForm.tsx`**: A form for editing the details of a specific daily record (worker/labourer count, muta/machine costs, and notes).
+-   **`layout/Header.tsx`**: The simple, consistent header displayed on all pages.
+-   **`places/PlaceCard.tsx`**: A summary card for a work site on the home page. It shows the site name, rates, and provides buttons to manage, edit, or delete the site.
+-   **`places/PlaceForm.tsx`**: A reusable form, powered by `react-hook-form` and `zod`, for both creating new work sites and editing existing ones.
+-   **`records/HistoryTable.tsx`**: A table used on the history page for desktop screens. It neatly displays daily records with details on workers, labourers, other costs, and totals.
+-   **`records/HistoryCard.tsx`**: A card-based view for a single daily record, used on the history page for mobile screens to ensure readability.
+-   **`records/RecordForm.tsx`**: A form for editing the details of a past daily record, including workers, labourers, and the dynamic list of additional costs.
 
 ### `src/contexts/`
 
--   **`DataContext.tsx`**: This is the core of the application's state management. It uses React's Context API to manage all data related to work sites and their records.
-    -   It initializes the data from `localStorage` if available, otherwise, it uses initial mock data.
-    -   It provides functions to perform CRUD (Create, Read, Update, Delete) operations on places and their records.
-    -   All data changes are persisted to `localStorage` automatically.
+-   **`DataContext.tsx`**: The heart of the application's state management. It uses React Context and `useState`/`useEffect` hooks to manage all data.
+    -   It initializes state from `localStorage` on load, ensuring data persistence. If no data is found, it loads initial mock data.
+    -   It provides all the CRUD functions (`addPlace`, `updatePlace`, `addOrUpdateRecord`, etc.) that components use to modify data.
+    -   Any change to the data triggers an automatic save back to `localStorage`.
 
 ### `src/lib/`
 
--   **`types.ts`**: Contains the TypeScript interfaces for the main data structures used in the app, such as `Place` and `DailyRecord`. This defines the shape of our data.
--   **`utils.ts`**: A utility file from ShadCN that includes the `cn` function to merge Tailwind CSS classes conditionally.
+-   **`types.ts`**: Contains all TypeScript interfaces (`Place`, `DailyRecord`, `AdditionalCost`) that define the application's data structure.
+-   **`pdf-generator.ts`**: Contains the logic to create a PDF report using `jspdf` and `jspdf-autotable`. It formats the data into weekly tables with proper headers and totals.
+-   **`utils.ts`**: A utility file that includes the `cn` function for intelligently merging Tailwind CSS classes.
 
-## How It Works
+### `src/hooks/`
 
-1.  **State Management**: The app uses `DataContext` to provide a centralized store for all application data. This context handles all interactions with `localStorage` to persist data across sessions. Any component can access this data using the `useData` hook.
-2.  **Routing**: The app uses Next.js's App Router for file-based routing. The main page (`/`) lists all sites. Clicking on a site takes you to `/places/[id]`, which is the dynamic dashboard for that specific site. The history page is at `/places/[id]/history`.
-3.  **Data Flow & CRUD**:
-    -   Components use the `useData()` hook to access data and functions from `DataContext` (e.g., `places`, `addOrUpdateRecord`).
-    -   When a user performs an action (e.g., adding a record), the component calls a function from the context.
-    -   The context updates its internal state using `useState`, which triggers a re-render of any component that uses that state.
-    -   A `useEffect` hook in `DataContext` listens for changes to the `places` state and saves the updated array to `localStorage`, ensuring data persistence.
-4.  **UI**: The UI is built with [ShadCN](https://ui.shadcn.com/) components, which are highly customizable and accessible React components built on top of Radix UI and Tailwind CSS. This allows for a professional and consistent look and feel.
+-   **`use-mobile.tsx`**: A simple custom hook that returns `true` if the viewport is below a certain width, allowing components to render different layouts for mobile.
+-   **`use-toast.ts`**: A hook for dispatching toast notifications for user feedback (e.g., "Site created," "Record updated").
