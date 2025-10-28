@@ -88,7 +88,7 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className={cn('w-full', place ? 'btn-gradient-primary' : 'btn-gradient-accent')}>
+        <Button type="submit" className={cn('w-full', 'btn-gradient-primary')}>
           {place ? 'Save Changes' : 'Create Site'}
         </Button>
       </form>

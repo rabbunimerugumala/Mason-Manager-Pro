@@ -246,7 +246,7 @@ export default function PlaceDashboard() {
                   </Button>
                 </div>
               
-              <Button onClick={handleSaveRecord} disabled={isSaving} className={cn("w-full btn-gradient-accent")}>
+              <Button onClick={handleSaveRecord} disabled={isSaving} className={cn("w-full btn-gradient-primary")}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
                 {place.records.some(r => r.date === today) ? 'Update Today\'s Record' : 'Save Today\'s Record'}
               </Button>

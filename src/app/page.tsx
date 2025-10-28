@@ -21,7 +21,7 @@ export default function Home() {
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Work Sites</h1>
         <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
           <DialogTrigger asChild>
-            <Button className={cn('btn-gradient-accent')}>
+            <Button className={cn('btn-gradient-primary')}>
               <PlusCircle className="mr-2 h-5 w-5" />
               Create Site
             </Button>
