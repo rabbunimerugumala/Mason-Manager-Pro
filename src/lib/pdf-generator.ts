@@ -1,12 +1,20 @@
+
 'use client';
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Place } from './types';
-import { format, getWeek, getYear, parseISO, startOfWeek, endOfWeek } from 'date-fns';
+import { format, getWeek, getYear, parseISO, startOfWeek, endOfWeek, add, subDays, Day } from 'date-fns';
 
 interface AutoTableDoc extends jsPDF {
   autoTable: (options: any) => jsPDF;
+}
+
+function getWeekMonToSat(date: Date) {
+    const weekStartsOn: Day = 1; // Monday
+    const start = startOfWeek(date, { weekStartsOn });
+    const end = add(start, { days: 5 }); // Monday + 5 days = Saturday
+    return { start, end };
 }
 
 export function generatePdf(place: Place) {
@@ -24,12 +32,12 @@ export function generatePdf(place: Place) {
 
   const weeklyGroupedRecords = place.records.reduce((acc, record) => {
     const recordDate = parseISO(record.date);
-    const weekNumber = getWeek(recordDate, { weekStartsOn: 1 });
-    const year = getYear(recordDate);
+    const adjustedDate = recordDate.getDay() === 0 ? subDays(recordDate, 1) : recordDate;
+    const weekNumber = getWeek(adjustedDate, { weekStartsOn: 1 });
+    const year = getYear(adjustedDate);
     const weekKey = `${year}-W${weekNumber}`;
     if (!acc[weekKey]) {
-      const start = startOfWeek(recordDate, { weekStartsOn: 1 });
-      const end = endOfWeek(recordDate, { weekStartsOn: 1 });
+      const { start, end } = getWeekMonToSat(adjustedDate);
       acc[weekKey] = {
         records: [],
         weekLabel: `Week of ${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`,
@@ -119,3 +127,5 @@ export function generatePdf(place: Place) {
 
   doc.save(`History-Report-${place.name.replace(/\s/g, '_')}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
+
+    
