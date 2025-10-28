@@ -13,7 +13,7 @@ Mason Manager Pro is a modern, responsive web application built with Next.js, de
 -   **PDF Export**: Generate a professional, detailed PDF report of the entire history for a work site, including weekly totals and a grand total. This is perfect for record-keeping and sharing.
 -   **Share as JPG**: Share a summary of any specific week's work as a downloadable JPG image, ideal for quick updates via messaging apps.
 -   **Fully Mobile-Responsive**: The UI is optimized for all screen sizes, ensuring a seamless experience whether you are on a phone, tablet, or desktop.
--   **Persistent Local Storage**: All your data is automatically saved in the browser's local storage, so you never lose your records.
+-   **Persistent Local Storage**: All your data is automatically saved in the browser's local storage, so you never lose your records. The app is fully functional offline.
 -   **Consistent & Modern UI**: The application uses a consistent design language with gradient buttons and a professional color palette, built with ShadCN UI and Tailwind CSS.
 
 ## Tech Stack
@@ -24,7 +24,8 @@ This project is built with a modern, robust, and scalable tech stack:
 -   **Language**: [TypeScript](https://www.typescriptlang.org/)
 -   **UI Components**: [ShadCN UI](https://ui.shadcn.com/)
 -   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
--   **State Management**: React Context API with `useState`, `useEffect`, and `useCallback` hooks for clean and efficient state management across the app. Data is persisted in the browser's `localStorage`.
+-   **State Management**: React Context API with `useState`, `useEffect`, and `useCallback` hooks for clean and efficient state management across the app.
+-   **Data Persistence**: Browser `localStorage` is used to store all application data, allowing for offline access and ensuring no data is lost between sessions.
 -   **Forms**: [React Hook Form](https://react-hook-form.com/) for performant and flexible form handling.
 -   **Schema Validation**: [Zod](https://zod.dev/) for validating form data and ensuring type safety.
 -   **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF) and [jsPDF-AutoTable](https://github.com/simonbengtsson/jsPDF-AutoTable) for creating detailed, exportable PDF reports.
@@ -49,6 +50,14 @@ The user journey is designed to be simple and intuitive:
     -   Export the entire site history as a PDF.
     -   Share a specific week's summary as a JPG image.
     -   Edit or delete any individual past record.
+
+## How to View Saved Data in `localStorage`
+
+All application data is stored in your browser. You can inspect it by following these steps:
+1.  Open your browser's Developer Tools (usually by pressing `F12` or right-clicking and selecting "Inspect").
+2.  Go to the **Application** tab (in Chrome) or **Storage** tab (in Firefox).
+3.  In the sidebar, expand **Local Storage** and select the site's URL.
+4.  You will find all the data stored under the key `mason-manager-pro-data`.
 
 ## Project Structure & File Descriptions
 
