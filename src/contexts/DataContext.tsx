@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Place, DailyRecord, AdditionalCost } from '@/lib/types';
 import { subDays, format } from 'date-fns';
+import { useUser } from './UserContext';
 
 interface DataContextType {
   places: Place[];
@@ -19,7 +20,7 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const DATA_KEY = 'mason-manager-pro-data';
+const DATA_KEY_PREFIX = 'mason-manager-pro-data-';
 
 const generateMockRecords = () => {
   const records = [];
@@ -59,11 +60,22 @@ const getInitialData = (): Place[] => {
 
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { currentUser, loading: userLoading } = useUser();
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const DATA_KEY = currentUser ? `${DATA_KEY_PREFIX}${currentUser.name.toLowerCase()}` : '';
 
   useEffect(() => {
+    if (userLoading) return;
     setLoading(true);
+
+    if (!currentUser || !DATA_KEY) {
+      setPlaces([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const savedData = localStorage.getItem(DATA_KEY);
       if (savedData) {
@@ -81,17 +93,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setPlaces(getInitialData());
     }
     setLoading(false);
-  }, []);
+  }, [currentUser, userLoading, DATA_KEY]);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !userLoading && DATA_KEY) {
       try {
         localStorage.setItem(DATA_KEY, JSON.stringify(places));
       } catch (error) {
         console.error("Failed to save data to localStorage", error);
       }
     }
-  }, [places, loading]);
+  }, [places, loading, userLoading, DATA_KEY]);
 
   const addPlace = useCallback((placeData: Omit<Place, 'id' | 'records'>) => {
     const newPlace: Place = {
@@ -169,9 +181,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearData = useCallback(() => {
-    setPlaces([]);
-    localStorage.removeItem(DATA_KEY);
-  }, []);
+    if (DATA_KEY) {
+      setPlaces([]);
+      localStorage.removeItem(DATA_KEY);
+    }
+  }, [DATA_KEY]);
 
   const value = { places, loading, addPlace, updatePlace, deletePlace, getPlaceById, addOrUpdateRecord, deleteRecord, updatePlaceRates, clearData };
 

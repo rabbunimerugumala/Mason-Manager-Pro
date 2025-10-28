@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { DataProvider } from '@/contexts/DataContext';
+import { UserProvider } from '@/contexts/UserContext';
 import { Header } from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" crossOrigin="anonymous" />
       </head>
       <body className={cn('font-body antialiased bg-background text-foreground')}>
+        <UserProvider>
           <DataProvider>
             <div className="relative flex min-h-screen flex-col">
               <Header />
@@ -30,6 +32,7 @@ export default function RootLayout({
             </div>
             <Toaster />
           </DataProvider>
+        </UserProvider>
       </body>
     </html>
   );
