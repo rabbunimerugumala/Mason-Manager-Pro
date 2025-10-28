@@ -171,11 +171,11 @@ export default function PlaceDashboard() {
   return (
     <div className="container mx-auto p-4 md:p-6">
       <div className="flex items-center mb-6">
-        <Button variant="outline" size="icon" className="mr-4" asChild>
+        <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
             <Link href="/"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">{place.name}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground truncate">{place.name}</h1>
           <p className="text-muted-foreground">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
         </div>
       </div>
@@ -208,8 +208,8 @@ export default function PlaceDashboard() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Additional Costs</h3>
                    {additionalCosts.map((cost, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-6 space-y-1">
+                    <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-6 sm:col-span-7 space-y-1">
                           <Label htmlFor={`cost-desc-${index}`} className={cn(index > 0 && "sr-only")}>Description</Label>
                           <Input 
                             id={`cost-desc-${index}`}
@@ -218,7 +218,7 @@ export default function PlaceDashboard() {
                             onChange={e => handleAdditionalCostChange(index, 'description', e.target.value)}
                           />
                         </div>
-                        <div className="col-span-4 space-y-1">
+                        <div className="col-span-4 sm:col-span-3 space-y-1">
                            <Label htmlFor={`cost-amount-${index}`} className={cn(index > 0 && "sr-only")}>Amount (Rs:)</Label>
                           <Input
                             id={`cost-amount-${index}`}
@@ -228,7 +228,7 @@ export default function PlaceDashboard() {
                             onChange={e => handleAdditionalCostChange(index, 'amount', e.target.value)}
                           />
                         </div>
-                        <div className="col-span-2 flex items-end h-full">
+                        <div className="col-span-2 flex items-center">
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -242,11 +242,11 @@ export default function PlaceDashboard() {
                   ))}
                   <Button variant="outline" onClick={addAdditionalCostField}>
                     <Plus className="mr-2 h-4 w-4"/>
-                    Add Additional Cost
+                    Add Cost
                   </Button>
                 </div>
               
-              <Button onClick={handleSaveRecord} disabled={isSaving} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={handleSaveRecord} disabled={isSaving} className={cn("w-full btn-gradient-accent")}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
                 {place.records.some(r => r.date === today) ? 'Update Today\'s Record' : 'Save Today\'s Record'}
               </Button>
@@ -259,7 +259,7 @@ export default function PlaceDashboard() {
               <CardDescription>Set the daily payment rates for this site.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="worker-rate">Worker Rate (Rs:)</Label>
                   <Input id="worker-rate" type="number" value={workerRate || ''} onChange={e => setWorkerRate(Number(e.target.value))} />
@@ -269,7 +269,7 @@ export default function PlaceDashboard() {
                   <Input id="labourer-rate" type="number" value={labourerRate || ''} onChange={e => setLabourerRate(Number(e.target.value))} />
                 </div>
               </div>
-              <Button onClick={handleSaveRates} className="w-full">
+              <Button onClick={handleSaveRates} className={cn("w-full btn-gradient-primary")}>
                 <Save className="mr-2 h-5 w-5" />
                 Save Rates
               </Button>

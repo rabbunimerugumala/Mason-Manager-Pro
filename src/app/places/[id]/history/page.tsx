@@ -12,10 +12,15 @@ import type { Place } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { getWeek, getYear, parseISO, format, startOfWeek, endOfWeek } from 'date-fns';
+import { HistoryCard } from '@/components/records/HistoryCard';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 export default function HistoryPage() {
   const params = useParams();
   const { getPlaceById, loading } = useData();
+  const isMobile = useIsMobile();
 
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const place = useMemo(() => getPlaceById(placeId), [placeId, getPlaceById]);
@@ -75,17 +80,17 @@ export default function HistoryPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center">
-            <Button variant="outline" size="icon" className="mr-4" asChild>
+            <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
                 <Link href={`/places/${place.id}`}><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
             <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground">History Log</h1>
-                <p className="text-muted-foreground">{place.name}</p>
+                <p className="text-muted-foreground truncate">{place.name}</p>
             </div>
         </div>
-        <Button onClick={handleExport} disabled={place.records.length === 0}>
+        <Button onClick={handleExport} disabled={place.records.length === 0} className='w-full sm:w-auto'>
             <FileDown className="mr-2 h-4 w-4" />
             Export as PDF
         </Button>
@@ -101,20 +106,28 @@ export default function HistoryPage() {
             {sortedWeeks.map(weekKey => (
               <Card key={weekKey} className="overflow-hidden">
                 <AccordionItem value={weekKey} className="border-none">
-                  <AccordionTrigger className="p-6 hover:no-underline bg-muted/50">
+                  <AccordionTrigger className="p-4 sm:p-6 hover:no-underline bg-muted/50">
                     <div className="flex justify-between items-center w-full">
                         <div className="text-left">
-                            <h3 className="font-semibold text-lg">{weeklyGroupedRecords[weekKey].weekLabel}</h3>
+                            <h3 className="font-semibold text-base sm:text-lg">{weeklyGroupedRecords[weekKey].weekLabel}</h3>
                             <p className="text-sm text-muted-foreground">{weeklyGroupedRecords[weekKey].records.length} record(s)</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right pl-2">
                            <p className="text-sm text-muted-foreground">Week Total</p>
-                           <p className="font-bold text-lg text-primary">Rs: {weeklyGroupedRecords[weekKey].total.toFixed(2)}</p>
+                           <p className="font-bold text-base sm:text-lg text-primary">Rs: {weeklyGroupedRecords[weekKey].total.toFixed(2)}</p>
                         </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <HistoryTable records={weeklyGroupedRecords[weekKey].records} placeId={place.id} />
+                    {isMobile ? (
+                        <div className='p-4 space-y-4'>
+                             {weeklyGroupedRecords[weekKey].records.sort((a,b) => b.date.localeCompare(a.date)).map(record => (
+                                 <HistoryCard key={record.id} record={record} placeId={place.id}/>
+                             ))}
+                        </div>
+                    ) : (
+                       <HistoryTable records={weeklyGroupedRecords[weekKey].records} placeId={place.id} />
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               </Card>

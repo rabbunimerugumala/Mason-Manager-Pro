@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { PlaceForm } from './PlaceForm';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface PlaceCardProps {
   place: Place;
@@ -45,7 +46,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button asChild className={cn('btn-gradient-primary')}>
           <Link href={`/places/${place.id}`}>Manage Site</Link>
         </Button>
         <div className="flex items-center space-x-2">

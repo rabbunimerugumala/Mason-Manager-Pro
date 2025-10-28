@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { PlaceForm } from '@/components/places/PlaceForm';
 import { PlaceCard } from '@/components/places/PlaceCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const { places, loading } = useData();
@@ -20,9 +21,9 @@ export default function Home() {
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Work Sites</h1>
         <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button className={cn('btn-gradient-accent')}>
               <PlusCircle className="mr-2 h-5 w-5" />
-              Create Place
+              Create Site
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
@@ -35,7 +36,7 @@ export default function Home() {
       </div>
 
       {loading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="flex flex-col space-y-3 p-6 rounded-lg border bg-card">
               <Skeleton className="h-6 w-3/4" />
@@ -50,7 +51,7 @@ export default function Home() {
           ))}
         </div>
       ) : places.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {places.map((place: Place) => (
             <PlaceCard key={place.id} place={place} />
           ))}
@@ -58,7 +59,7 @@ export default function Home() {
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
           <h2 className="text-xl font-semibold text-muted-foreground">No work sites found.</h2>
-          <p className="text-muted-foreground mt-2">Get started by creating a new place.</p>
+          <p className="text-muted-foreground mt-2">Get started by creating a new site.</p>
         </div>
       )}
     </div>

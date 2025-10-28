@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useData } from '@/contexts/DataContext';
 import type { Place } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -87,8 +88,8 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-          {place ? 'Save Changes' : 'Create Place'}
+        <Button type="submit" className={cn('w-full', place ? 'btn-gradient-primary' : 'btn-gradient-accent')}>
+          {place ? 'Save Changes' : 'Create Site'}
         </Button>
       </form>
     </Form>

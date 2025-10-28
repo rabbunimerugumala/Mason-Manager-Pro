@@ -30,7 +30,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { DailyRecord } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { RecordForm } from './RecordForm';
@@ -57,7 +56,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
   const sortedRecords = [...records].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <div className="p-0">
+    <div className="p-0 overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -78,7 +77,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
 
             return (
             <TableRow key={record.id}>
-              <TableCell className="font-medium">{format(parseISO(record.date), 'EEE, MMM d')}</TableCell>
+              <TableCell className="font-medium whitespace-nowrap">{format(parseISO(record.date), 'EEE, MMM d')}</TableCell>
               <TableCell className="text-center">{record.workers}</TableCell>
               <TableCell className="text-center">{record.labourers}</TableCell>
               <TableCell>

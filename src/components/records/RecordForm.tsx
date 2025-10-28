@@ -12,6 +12,7 @@ import type { DailyRecord } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
+import { cn } from '@/lib/utils';
 
 const additionalCostSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
@@ -156,7 +157,7 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
+        <Button type="submit" className={cn("w-full btn-gradient-primary")}>
           Save Changes
         </Button>
       </form>
