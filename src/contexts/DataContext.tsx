@@ -1,9 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Place, DailyRecord, AdditionalCost, User } from '@/lib/types';
+import { Place, DailyRecord, AdditionalCost } from '@/lib/types';
 import { subDays, format } from 'date-fns';
-import { useUser } from './UserContext';
 
 interface DataContextType {
   places: Place[];
@@ -20,6 +19,8 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+const DATA_KEY = 'mason-manager-pro-data';
+
 const generateMockRecords = () => {
   const records = [];
   for (let i = 0; i < 15; i++) {
@@ -35,19 +36,18 @@ const generateMockRecords = () => {
   return records;
 };
 
-const getInitialData = (user: User | null): Place[] => {
-  if (!user) return [];
+const getInitialData = (): Place[] => {
   return [
     {
       id: '1',
-      name: `Downtown Skyscraper (${user.name.split(' ')[0]})`,
+      name: 'Downtown Skyscraper',
       workerRate: 1000,
       labourerRate: 600,
       records: generateMockRecords(),
     },
     {
       id: '2',
-      name: `Suburban Villa (${user.name.split(' ')[0]})`,
+      name: 'Suburban Villa',
       workerRate: 900,
       labourerRate: 550,
       records: [
@@ -59,52 +59,39 @@ const getInitialData = (user: User | null): Place[] => {
 
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { currentUser } = useUser();
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const getDataKey = useCallback(() => {
-    return currentUser ? `mason-manager-pro-data-${currentUser.id}` : null;
-  }, [currentUser]);
-  
   useEffect(() => {
-    const dataKey = getDataKey();
-    if (!dataKey) {
-        setPlaces([]);
-        setLoading(false);
-        return;
-    };
-
     setLoading(true);
     try {
-      const savedData = localStorage.getItem(dataKey);
+      const savedData = localStorage.getItem(DATA_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         if (parsedData && parsedData.length > 0) {
             setPlaces(parsedData);
         } else {
-            setPlaces(getInitialData(currentUser));
+            setPlaces(getInitialData());
         }
       } else {
-        setPlaces(getInitialData(currentUser));
+        setPlaces(getInitialData());
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
-      setPlaces(getInitialData(currentUser));
+      setPlaces(getInitialData());
     }
     setLoading(false);
-  }, [currentUser, getDataKey]);
+  }, []);
 
   useEffect(() => {
-    const dataKey = getDataKey();
-    if (!loading && dataKey) {
+    if (!loading) {
       try {
-        localStorage.setItem(dataKey, JSON.stringify(places));
+        localStorage.setItem(DATA_KEY, JSON.stringify(places));
       } catch (error) {
         console.error("Failed to save data to localStorage", error);
       }
     }
-  }, [places, loading, getDataKey]);
+  }, [places, loading]);
 
   const addPlace = useCallback((placeData: Omit<Place, 'id' | 'records'>) => {
     const newPlace: Place = {
@@ -183,6 +170,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const clearData = useCallback(() => {
     setPlaces([]);
+    localStorage.removeItem(DATA_KEY);
   }, []);
 
   const value = { places, loading, addPlace, updatePlace, deletePlace, getPlaceById, addOrUpdateRecord, deleteRecord, updatePlaceRates, clearData };
