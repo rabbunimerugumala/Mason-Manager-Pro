@@ -5,15 +5,16 @@ import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { DailyRecord } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Users, HardHat, DollarSign, StickyNote } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { RecordForm } from './RecordForm';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HistoryCardProps {
     record: DailyRecord;
@@ -24,6 +25,7 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
     const { getPlaceById, deleteRecord } = useData();
     const { toast } = useToast();
     const [isEditModalOpen, setEditModalOpen] = useState(false);
+    const isMobile = useIsMobile();
 
     const place = getPlaceById(placeId);
 
@@ -37,6 +39,26 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
         toast({ title: 'Success', description: 'Record deleted.' });
     };
 
+    const EditRecordDialog = () => (
+        <>
+            <DialogHeader>
+                <DialogTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DialogTitle>
+            </DialogHeader>
+            <RecordForm record={record} placeId={placeId} setModalOpen={setEditModalOpen} />
+        </>
+    );
+
+    const EditRecordDrawer = () => (
+        <>
+            <DrawerHeader>
+                <DrawerTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4">
+                <RecordForm record={record} placeId={placeId} setModalOpen={setEditModalOpen} />
+            </div>
+        </>
+    );
+
     return (
         <Card className="w-full">
             <CardHeader>
@@ -46,19 +68,29 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
                         <p className="text-sm font-bold text-primary">Total: Rs: {total.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center space-x-1">
-                        <Dialog open={isEditModalOpen} onOpenChange={setEditModalOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                <DialogTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DialogTitle>
-                                </DialogHeader>
-                                <RecordForm record={record} placeId={placeId} setModalOpen={setEditModalOpen} />
-                            </DialogContent>
-                        </Dialog>
+                        {isMobile ? (
+                             <Drawer open={isEditModalOpen} onOpenChange={setEditModalOpen}>
+                                <DrawerTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                </DrawerTrigger>
+                                <DrawerContent>
+                                    <EditRecordDrawer />
+                                </DrawerContent>
+                            </Drawer>
+                        ) : (
+                            <Dialog open={isEditModalOpen} onOpenChange={setEditModalOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <EditRecordDialog />
+                                </DialogContent>
+                            </Dialog>
+                        )}
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">

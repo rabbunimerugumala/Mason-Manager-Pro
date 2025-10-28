@@ -1,23 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import type { Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { PlaceForm } from '@/components/places/PlaceForm';
 import { PlaceCard } from '@/components/places/PlaceCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
 import { useRouter } from 'next/navigation';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function SitesPage() {
   const { places, loading: dataLoading } = useData();
   const { currentUser, loading: userLoading } = useUser();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   // This state will help us avoid hydration errors and handle redirection
   const [isClient, setIsClient] = useState(false);
@@ -59,24 +62,55 @@ export default function SitesPage() {
     )
   }
 
+  const CreateSiteDialog = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle>Create New Work Site</DialogTitle>
+      </DialogHeader>
+      <PlaceForm setModalOpen={setCreateModalOpen} />
+    </>
+  );
+
+  const CreateSiteDrawer = () => (
+    <>
+      <DrawerHeader>
+        <DrawerTitle>Create New Work Site</DrawerTitle>
+      </DrawerHeader>
+      <div className="p-4">
+        <PlaceForm setModalOpen={setCreateModalOpen} />
+      </div>
+    </>
+  );
+
   return (
     <div className="container mx-auto p-4 md:p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Work Sites</h1>
-        <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button className={cn('btn-gradient-primary')}>
-              <PlusCircle className="mr-2 h-5 w-5" />
-              Create Site
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Create New Work Site</DialogTitle>
-            </DialogHeader>
-            <PlaceForm setModalOpen={setCreateModalOpen} />
-          </DialogContent>
-        </Dialog>
+        {isMobile ? (
+            <Drawer open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
+                <DrawerTrigger asChild>
+                    <Button className={cn('btn-gradient-primary')}>
+                        <PlusCircle className="mr-2 h-5 w-5" />
+                        Create Site
+                    </Button>
+                </DrawerTrigger>
+                <DrawerContent>
+                    <CreateSiteDrawer />
+                </DrawerContent>
+            </Drawer>
+        ) : (
+            <Dialog open={isCreateModalOpen} onOpenChange={setCreateModalOpen}>
+                <DialogTrigger asChild>
+                    <Button className={cn('btn-gradient-primary')}>
+                        <PlusCircle className="mr-2 h-5 w-5" />
+                        Create Site
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <CreateSiteDialog />
+                </DialogContent>
+            </Dialog>
+        )}
       </div>
 
       {places.length > 0 ? (

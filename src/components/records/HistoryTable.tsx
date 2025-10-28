@@ -19,6 +19,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerTrigger,
+} from '@/components/ui/drawer';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -35,6 +42,7 @@ import { useData } from '@/contexts/DataContext';
 import { RecordForm } from './RecordForm';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HistoryTableProps {
   records: DailyRecord[];
@@ -45,6 +53,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
   const { deleteRecord, getPlaceById } = useData();
   const { toast } = useToast();
   const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
+  const isMobile = useIsMobile();
 
   const place = getPlaceById(placeId);
 
@@ -54,6 +63,26 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
   };
   
   const sortedRecords = [...records].sort((a, b) => b.date.localeCompare(a.date));
+
+  const EditRecordDialog = ({ record }: {record: DailyRecord}) => (
+    <>
+      <DialogHeader>
+        <DialogTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DialogTitle>
+      </DialogHeader>
+      <RecordForm record={record} placeId={placeId} setModalOpen={(open) => !open && setEditingRecord(null)} />
+    </>
+  );
+
+  const EditRecordDrawer = ({ record }: {record: DailyRecord}) => (
+    <>
+      <DrawerHeader>
+        <DrawerTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DrawerTitle>
+      </DrawerHeader>
+      <div className="p-4">
+        <RecordForm record={record} placeId={placeId} setModalOpen={(open) => !open && setEditingRecord(null)} />
+      </div>
+    </>
+  );
 
   return (
     <div className="p-0 overflow-x-auto">
@@ -95,20 +124,31 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
               </TableCell>
               <TableCell className="text-right font-semibold">{total.toFixed(2)}</TableCell>
               <TableCell className="text-right">
-                <Dialog open={editingRecord?.id === record.id} onOpenChange={(isOpen) => !isOpen && setEditingRecord(null)}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={() => setEditingRecord(record)}>
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit Record</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DialogTitle>
-                    </DialogHeader>
-                    {editingRecord && <RecordForm record={editingRecord} placeId={placeId} setModalOpen={(open) => !open && setEditingRecord(null)} />}
-                  </DialogContent>
-                </Dialog>
+                {isMobile ? (
+                    <Drawer open={editingRecord?.id === record.id} onOpenChange={(isOpen) => !isOpen && setEditingRecord(null)}>
+                        <DrawerTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => setEditingRecord(record)}>
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Edit Record</span>
+                            </Button>
+                        </DrawerTrigger>
+                        <DrawerContent>
+                            {editingRecord && <EditRecordDrawer record={editingRecord}/>}
+                        </DrawerContent>
+                    </Drawer>
+                ) : (
+                    <Dialog open={editingRecord?.id === record.id} onOpenChange={(isOpen) => !isOpen && setEditingRecord(null)}>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => setEditingRecord(record)}>
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Edit Record</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            {editingRecord && <EditRecordDialog record={editingRecord}/>}
+                        </DialogContent>
+                    </Dialog>
+                )}
                 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
