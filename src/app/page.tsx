@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 
 
 export default function AuthPage() {
-  const { loginUser, addUser, loading: userLoading } = useUser();
+  const { loginUser, addUser, loading: userLoading, currentUser } = useUser();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -35,6 +35,13 @@ export default function AuthPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    // If the user is already logged in, redirect them to the sites page.
+    if (isClient && !userLoading && currentUser) {
+      router.replace('/sites');
+    }
+  }, [isClient, userLoading, currentUser, router]);
 
   const handleLogin = () => {
     if (!loginName || !loginPassword) {
@@ -81,7 +88,7 @@ export default function AuthPage() {
     }, 500);
   };
   
-  if (!isClient || userLoading) {
+  if (!isClient || userLoading || currentUser) {
     return (
         <div className="container mx-auto p-4 md:p-6 flex justify-center items-center h-[80vh]">
             <Card className="w-full max-w-sm">
