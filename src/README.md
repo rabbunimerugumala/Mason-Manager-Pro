@@ -15,7 +15,7 @@ Mason Manager Pro is a modern, responsive web application built with Next.js, de
 -   **PDF Export**: Generate a professional, detailed PDF report of the entire history for a work site, including weekly totals and a grand total.
 -   **Share as JPG**: Share a summary of any specific week's work as a downloadable JPG image, ideal for quick updates via messaging apps.
 -   **Fully Mobile-Responsive**: The UI is optimized for all screen sizes. Dialogs adapt into drawers on mobile for a seamless experience.
--   **Persistent & Private Local Storage**: All your data is automatically saved in the browser's `localStorage` and is tied to your user account.
+-   **Persistent & Private Local Storage**: All your data is automatically saved in the browser's `localStorage` and is tied to your user account on the specific device you are using.
 -   **Modern UI**: Built with ShadCN UI and Tailwind CSS for a consistent and professional design.
 
 ## Tech Stack
@@ -43,10 +43,11 @@ Mason Manager Pro is a modern, responsive web application built with Next.js, de
 
 ## Data Storage
 
-All data is stored locally in the browser's `localStorage`. This makes the app fast and functional even when offline.
+All data is stored locally in the browser's `localStorage` on the device you are using. This makes the app fast and functional even when offline. Data is sandboxed per user.
+
 -   **User Accounts**: A list of all users is stored under the key `mason-manager-users`.
 -   **Current User Session**: The currently logged-in user's information is stored under `mason-manager-current-user`.
--   **Site & Record Data**: All work sites and daily records are stored under a key unique to the logged-in user, like `mason-manager-pro-data-username`. This ensures that each user's data is kept separate and private.
+-   **Site & Record Data**: All work sites and daily records are stored under a key unique to the logged-in user, like `mason-manager-pro-data-username`. This ensures that each user's data is kept separate and private on that device.
 
 ## Project Structure & File Descriptions
 
