@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 export const metadata: Metadata = {
   title: 'Mason Manager Pro',
   description: 'Manage daily worker attendance, wages, and sites.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
