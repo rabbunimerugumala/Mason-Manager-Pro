@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from '../ui/button';
-import { useUser } from '@/firebase/auth/use-user';
 import { useAuth } from '@/firebase/provider';
+import { useUser } from '@/firebase';
 
 export function Header() {
   const { data: user, isLoading } = useUser();

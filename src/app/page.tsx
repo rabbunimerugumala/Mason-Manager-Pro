@@ -17,7 +17,7 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-import { useUser } from '@/firebase/auth/use-user';
+import { useUser } from '@/firebase';
 
 export default function AuthPage() {
   const auth = useAuth();

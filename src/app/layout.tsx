@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { DataProvider } from '@/contexts/DataContext';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { FirebaseErrorListener } from '@/components/layout/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'Mason Manager Pro',
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className={cn('font-body antialiased bg-background text-foreground')}>
         <FirebaseClientProvider>
           <DataProvider>
+            <FirebaseErrorListener />
             <div className="relative flex min-h-screen flex-col">
               <Header />
               <main className="flex-1">{children}</main>

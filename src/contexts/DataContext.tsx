@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import type { Place, DailyRecord, AdditionalCost } from '@/lib/types';
-import { useUser } from '@/firebase/auth/use-user';
+import { useUser } from '@/firebase';
 import {
   collection,
   doc,
