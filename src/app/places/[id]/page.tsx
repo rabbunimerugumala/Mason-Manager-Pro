@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -36,6 +37,8 @@ export default function PlaceDashboard() {
   const [isSavingRates, setIsSavingRates] = useState(false);
 
   useEffect(() => {
+    if (loading) return;
+    
     const currentPlace = getPlaceById(placeId);
     setPlace(currentPlace);
 
@@ -150,7 +153,7 @@ export default function PlaceDashboard() {
     return (
       <div className="container mx-auto p-4 md:p-6 text-center">
         <h2 className="text-2xl font-bold">Place not found</h2>
-        <Button asChild variant="link" className="mt-4"><Link href="/">Go back to sites</Link></Button>
+        <Button asChild variant="link" className="mt-4"><Link href="/sites">Go back to sites</Link></Button>
       </div>
     );
   }

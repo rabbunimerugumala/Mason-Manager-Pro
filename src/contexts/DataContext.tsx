@@ -49,7 +49,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,15 +57,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const dataKey = user ? `mason-manager-pro-data-${user.phone}` : null;
 
   useEffect(() => {
-    if (dataKey) {
-      setLoading(true);
-      const storedPlaces = getLocalStorage<Place[]>(dataKey, []);
-      setPlaces(storedPlaces);
+    if (!userLoading) {
+      if (dataKey) {
+        const storedPlaces = getLocalStorage<Place[]>(dataKey, []);
+        setPlaces(storedPlaces);
+      } else {
+        setPlaces([]);
+      }
       setLoading(false);
-    } else {
-      setPlaces([]);
     }
-  }, [dataKey]);
+  }, [dataKey, userLoading]);
 
   useEffect(() => {
     if (dataKey && !loading) {
@@ -153,6 +154,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const clearData = useCallback(async () => {
     if (!dataKey) return;
     setPlaces([]);
+    setLocalStorage(dataKey, []);
   }, [dataKey]);
 
 
