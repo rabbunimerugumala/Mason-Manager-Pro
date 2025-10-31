@@ -57,15 +57,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const dataKey = user ? `mason-manager-pro-data-${user.phone}` : null;
 
   useEffect(() => {
-    if (!userLoading) {
-      if (dataKey) {
-        const storedPlaces = getLocalStorage<Place[]>(dataKey, []);
-        setPlaces(storedPlaces);
-      } else {
-        setPlaces([]);
-      }
-      setLoading(false);
+    if (userLoading) {
+      // Still waiting for user session to be determined
+      setLoading(true);
+      return;
     }
+    
+    if (dataKey) {
+      const storedPlaces = getLocalStorage<Place[]>(dataKey, []);
+      setPlaces(storedPlaces);
+    } else {
+      // No user, so clear any existing data
+      setPlaces([]);
+    }
+    setLoading(false);
   }, [dataKey, userLoading]);
 
   useEffect(() => {

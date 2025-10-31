@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,7 +19,7 @@ import { useUser } from '@/contexts/UserContext';
 
 export default function PlaceDashboard() {
   const params = useParams();
-  const { getPlaceById, addOrUpdateRecord, updatePlaceRates, loading } = useData();
+  const { getPlaceById, addOrUpdateRecord, updatePlaceRates, loading: dataLoading } = useData();
   const { toast } = useToast();
   const { user, loading: userLoading } = useUser();
   
@@ -37,7 +36,7 @@ export default function PlaceDashboard() {
   const [isSavingRates, setIsSavingRates] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
+    if (dataLoading || userLoading) return;
     
     const currentPlace = getPlaceById(placeId);
     setPlace(currentPlace);
@@ -55,7 +54,7 @@ export default function PlaceDashboard() {
       setWorkerRate(currentPlace.workerRate || '');
       setLabourerRate(currentPlace.labourerRate || '');
     }
-  }, [placeId, getPlaceById, loading]);
+  }, [placeId, getPlaceById, dataLoading, userLoading]);
 
   const handleSaveRecord = async () => {
     if (!place) return;
@@ -145,7 +144,7 @@ export default function PlaceDashboard() {
   }, [place]);
 
 
-  if (loading || userLoading) {
+  if (dataLoading || userLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
