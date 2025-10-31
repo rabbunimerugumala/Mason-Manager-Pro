@@ -13,11 +13,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser } from '@/firebase/auth/use-user.tsx';
+import { useUser } from '@/contexts/UserContext';
 
 export default function SitesPage() {
   const { places, loading: dataLoading } = useData();
-  const { data: user, isLoading: userLoading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -37,7 +37,7 @@ export default function SitesPage() {
 
   const loading = userLoading || dataLoading;
   
-  if (!isClient || loading || !user) {
+  if (!isClient || loading) {
     return (
         <div className="container mx-auto p-4 md:p-6">
              <div className="flex items-center justify-between mb-6">
@@ -60,6 +60,10 @@ export default function SitesPage() {
             </div>
         </div>
     )
+  }
+  
+  if (!user) {
+    return null; // Should be redirected
   }
 
   const CreateSiteDialog = () => (

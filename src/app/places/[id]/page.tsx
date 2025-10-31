@@ -14,12 +14,14 @@ import { format, startOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Place, AdditionalCost } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/contexts/UserContext';
 
 
 export default function PlaceDashboard() {
   const params = useParams();
   const { getPlaceById, addOrUpdateRecord, updatePlaceRates, loading } = useData();
   const { toast } = useToast();
+  const { user, loading: userLoading } = useUser();
   
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
@@ -140,7 +142,7 @@ export default function PlaceDashboard() {
   }, [place]);
 
 
-  if (loading) {
+  if (loading || userLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 

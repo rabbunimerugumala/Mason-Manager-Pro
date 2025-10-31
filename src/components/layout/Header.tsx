@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2, LogOut, Settings, User as UserIcon, Loader2 } from 'lucide-react';
+import { Building2, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
@@ -12,18 +12,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from '../ui/button';
-import { useAuth } from '@/firebase/provider';
-import { useUser } from '@/firebase/auth/use-user.tsx';
+import { useUser } from '@/contexts/UserContext';
+import { Skeleton } from '../ui/skeleton';
 
 export function Header() {
-  const { data: user, isLoading } = useUser();
-  const auth = useAuth();
+  const { user, logout, loading } = useUser();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    if (auth) {
-      await auth.signOut();
-    }
+  const handleLogout = () => {
+    logout();
     router.push('/');
   };
 
@@ -36,14 +33,14 @@ export function Header() {
             Mason Manager Pro
           </span>
         </Link>
-        {isLoading ? (
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        ) : user && (
+        {loading ? (
+          <Skeleton className="h-8 w-24" />
+        ) : user ? (
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
                     <UserIcon className="h-5 w-5 text-muted-foreground" />
-                    <span className='font-semibold'>{user.displayName || user.phoneNumber}</span>
+                    <span className='font-semibold'>{user.name || user.phone}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
@@ -62,7 +59,7 @@ export function Header() {
                 </DropdownMenuItem>
             </DropdownMenuContent>
             </DropdownMenu>
-        )}
+        ) : null}
       </div>
     </header>
   );

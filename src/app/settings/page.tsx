@@ -20,10 +20,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase/auth/use-user.tsx';
+import { useUser } from '@/contexts/UserContext';
 
 export default function SettingsPage() {
-  const { data: user, isLoading: userLoading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const { clearData, loading: dataLoading } = useData();
   const router = useRouter();
   const { toast } = useToast();
@@ -49,12 +49,16 @@ export default function SettingsPage() {
   
   const loading = userLoading || dataLoading;
 
-  if (!isClient || loading || !user) {
+  if (!isClient || loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
+  }
+  
+  if (!user) {
+    return null; // Should be redirected by the effect
   }
 
   return (
@@ -81,7 +85,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="font-semibold">Clear All My Data</h3>
               <p className="text-sm text-muted-foreground">
-                This will permanently delete all your work sites and records.
+                This will permanently delete all your work sites and records from this device.
               </p>
             </div>
             <AlertDialog>
@@ -97,7 +101,7 @@ export default function SettingsPage() {
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete all
                     of your data, including all work sites and their associated
-                    records from the cloud.
+                    records from this device.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
