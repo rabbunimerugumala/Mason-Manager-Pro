@@ -86,7 +86,7 @@ export default function AuthPage() {
       
       toast({ title: 'Success', description: 'Account created successfully!' });
       router.push('/sites');
-    } catch (error: any) => {
+    } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not create account.' });
     } finally {
       setIsSigningUp(false);
