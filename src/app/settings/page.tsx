@@ -81,8 +81,8 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border border-destructive/50 p-4">
-            <div>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between rounded-lg border border-destructive/50 p-4">
+            <div className="mb-4 md:mb-0 md:mr-4">
               <h3 className="font-semibold">Clear All My Data</h3>
               <p className="text-sm text-muted-foreground">
                 This will permanently delete all your work sites and records from this device.
@@ -90,7 +90,7 @@ export default function SettingsPage() {
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="mt-4 sm:mt-0">
+                <Button variant="destructive" className="shrink-0">
                   <Trash2 className="mr-2 h-4 w-4" />
                   Clear Data
                 </Button>
