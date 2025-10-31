@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
@@ -23,21 +23,18 @@ export default function PlaceDashboard() {
   
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
-  const getPlace = useCallback(() => {
-    return getPlaceById(placeId);
-  }, [getPlaceById, placeId]);
-
   const [place, setPlace] = useState<Place | undefined>(undefined);
   const [today, setToday] = useState('');
   const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<Array<Omit<AdditionalCost, 'id'>>>([{ description: '', amount: 0 }]);
-  const [workerRate, setWorkerRate] = useState<number | ''>(0);
-  const [labourerRate, setLabourerRate] = useState<number | ''>(0);
-  const [isSaving, setIsSaving] = useState(false);
+  const [workerRate, setWorkerRate] = useState<number | ''>('');
+  const [labourerRate, setLabourerRate] = useState<number | ''>('');
+  const [isSavingRecord, setIsSavingRecord] = useState(false);
+  const [isSavingRates, setIsSavingRates] = useState(false);
 
   useEffect(() => {
-    const currentPlace = getPlace();
+    const currentPlace = getPlaceById(placeId);
     setPlace(currentPlace);
 
     const date = new Date();
@@ -49,34 +46,42 @@ export default function PlaceDashboard() {
       setWorkerCount(todayRecord?.workers || 0);
       setLabourerCount(todayRecord?.labourers || 0);
       const savedCosts = todayRecord?.additionalCosts || [];
-      setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(({id, ...rest}) => rest) : [{ description: '', amount: 0 }]);
+      setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(({...rest}) => ({...rest, amount: rest.amount || 0 })) : [{ description: '', amount: 0 }]);
       setWorkerRate(currentPlace.workerRate || '');
       setLabourerRate(currentPlace.labourerRate || '');
     }
-  }, [placeId, getPlace, loading]);
+  }, [placeId, getPlaceById, loading]);
 
-  const handleSaveRecord = () => {
+  const handleSaveRecord = async () => {
     if (!place) return;
-    setIsSaving(true);
-    const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
-    const { message } = addOrUpdateRecord(place.id, {
-      date: today,
-      workers: workerCount,
-      labourers: labourerCount,
-      additionalCosts: validAdditionalCosts,
-    });
-    toast({ title: 'Success', description: message });
-    setTimeout(() => {
-        setIsSaving(false);
-        const updatedPlace = getPlace();
-        if(updatedPlace) setPlace(updatedPlace);
-    }, 500);
+    setIsSavingRecord(true);
+    try {
+      const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
+      await addOrUpdateRecord(place.id, {
+        date: today,
+        workers: workerCount,
+        labourers: labourerCount,
+        additionalCosts: validAdditionalCosts,
+      });
+      toast({ title: 'Success', description: "Record saved." });
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message || "Could not save record."});
+    } finally {
+        setIsSavingRecord(false);
+    }
   };
   
-  const handleSaveRates = () => {
+  const handleSaveRates = async () => {
     if (!place) return;
-    updatePlaceRates(place.id, Number(workerRate) || 0, Number(labourerRate) || 0);
-    toast({ title: 'Success', description: 'Payment rates updated.' });
+    setIsSavingRates(true);
+    try {
+        await updatePlaceRates(place.id, Number(workerRate) || 0, Number(labourerRate) || 0);
+        toast({ title: 'Success', description: 'Payment rates updated.' });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message || "Could not save rates."});
+    } finally {
+        setIsSavingRates(false);
+    }
   };
 
   const handleAdditionalCostChange = (index: number, field: 'description' | 'amount', value: string | number) => {
@@ -223,7 +228,7 @@ export default function PlaceDashboard() {
                           <Input
                             id={`cost-amount-${index}`}
                             type="number"
-                            placeholder="0"
+                            placeholder="Amount"
                             value={cost.amount || ''}
                             onChange={e => handleAdditionalCostChange(index, 'amount', e.target.value)}
                           />
@@ -246,8 +251,8 @@ export default function PlaceDashboard() {
                   </Button>
                 </div>
               
-              <Button onClick={handleSaveRecord} disabled={isSaving} className={cn("w-full btn-gradient-primary")}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
+              <Button onClick={handleSaveRecord} disabled={isSavingRecord} className={cn("w-full btn-gradient-primary")}>
+                {isSavingRecord ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
                 {place.records.some(r => r.date === today) ? 'Update Today\'s Record' : 'Save Today\'s Record'}
               </Button>
             </CardContent>
@@ -262,15 +267,15 @@ export default function PlaceDashboard() {
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="worker-rate">Worker Rate (Rs:)</Label>
-                  <Input id="worker-rate" type="number" placeholder="1000" value={workerRate} onChange={e => setWorkerRate(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <Input id="worker-rate" type="number" placeholder="e.g., 1000" value={workerRate} onChange={e => setWorkerRate(e.target.value === '' ? '' : Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="labourer-rate">Labourer Rate (Rs:)</Label>
-                  <Input id="labourer-rate" type="number" placeholder="600" value={labourerRate} onChange={e => setLabourerRate(e.target.value === '' ? '' : Number(e.target.value))} />
+                  <Input id="labourer-rate" type="number" placeholder="e.g., 600" value={labourerRate} onChange={e => setLabourerRate(e.target.value === '' ? '' : Number(e.target.value))} />
                 </div>
               </div>
-              <Button onClick={handleSaveRates} className={cn("w-full btn-gradient-primary")}>
-                <Save className="mr-2 h-5 w-5" />
+              <Button onClick={handleSaveRates} disabled={isSavingRates} className={cn("w-full btn-gradient-primary")}>
+                {isSavingRates ? <Loader2 className="animate-spin mr-2"/> : <Save className="mr-2 h-5 w-5" />}
                 Save Rates
               </Button>
             </CardContent>
@@ -314,5 +319,3 @@ export default function PlaceDashboard() {
     </div>
   );
 }
-
-    

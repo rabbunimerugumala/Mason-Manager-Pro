@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/contexts/UserContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,9 +20,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/firebase/auth/use-user';
 
 export default function SettingsPage() {
-  const { currentUser, loading: userLoading } = useUser();
+  const { data: user, isLoading: userLoading } = useUser();
   const { clearData, loading: dataLoading } = useData();
   const router = useRouter();
   const { toast } = useToast();
@@ -34,13 +34,13 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (isClient && !userLoading && !currentUser) {
+    if (isClient && !userLoading && !user) {
       router.replace('/');
     }
-  }, [isClient, userLoading, currentUser, router]);
+  }, [isClient, userLoading, user, router]);
 
-  const handleClearData = () => {
-    clearData();
+  const handleClearData = async () => {
+    await clearData();
     toast({
       title: 'Data Cleared',
       description: 'All your site and record data has been deleted.',
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   
   const loading = userLoading || dataLoading;
 
-  if (!isClient || loading || !currentUser) {
+  if (!isClient || loading || !user) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -97,7 +97,7 @@ export default function SettingsPage() {
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete all
                     of your data, including all work sites and their associated
-                    records.
+                    records from the cloud.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

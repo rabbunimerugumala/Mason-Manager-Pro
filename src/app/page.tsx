@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,23 +11,31 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-
+import { useAuth } from '@/firebase/provider';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth';
+import { useUser } from '@/firebase/auth/use-user';
 
 export default function AuthPage() {
-  const { loginUser, addUser, loading: userLoading, currentUser } = useUser();
+  const auth = useAuth();
+  const { data: user, isLoading: userLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
 
-  const [loginName, setLoginName] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [signupName, setSignupName] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
-  
+
   // This state will help us avoid hydration errors
   const [isClient, setIsClient] = useState(false);
 
@@ -38,57 +45,55 @@ export default function AuthPage() {
 
   useEffect(() => {
     // If the user is already logged in, redirect them to the sites page.
-    if (isClient && !userLoading && currentUser) {
+    if (isClient && !userLoading && user) {
       router.replace('/sites');
     }
-  }, [isClient, userLoading, currentUser, router]);
+  }, [isClient, userLoading, user, router]);
 
-  const handleLogin = () => {
-    if (!loginName || !loginPassword) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter both username and password.' });
+  const handleLogin = async () => {
+    if (!auth) return;
+    if (!loginEmail || !loginPassword) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter both email and password.' });
       return;
     }
     setIsLoggingIn(true);
-    setTimeout(() => {
-        const loggedIn = loginUser(loginName, loginPassword);
-        if (loggedIn) {
-            toast({ title: 'Success', description: 'Logged in successfully.' });
-            router.push('/sites');
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: 'Invalid username or password.' });
-        }
-        setIsLoggingIn(false);
-    }, 500);
+    try {
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      toast({ title: 'Success', description: 'Logged in successfully.' });
+      router.push('/sites');
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Invalid email or password.' });
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
-  const handleSignup = () => {
-    if (!signupName || !signupPassword) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter both username and password.' });
+  const handleSignup = async () => {
+    if (!auth) return;
+    if (!signupName || !signupEmail || !signupPassword) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all fields.' });
       return;
     }
-    if (signupPassword.length < 4) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 4 characters.' });
-        return;
+    if (signupPassword.length < 6) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 6 characters.' });
+      return;
     }
 
     setIsSigningUp(true);
-    setTimeout(() => {
-        const { success, message } = addUser({ name: signupName, password: signupPassword });
-        if (success) {
-            toast({ title: 'Success', description: message });
-            // Automatically log in the user after signup
-            const loggedIn = loginUser(signupName, signupPassword);
-            if(loggedIn) {
-                router.push('/sites');
-            }
-        } else {
-            toast({ variant: 'destructive', title: 'Error', description: message });
-        }
-        setIsSigningUp(false);
-    }, 500);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, signupEmail, signupPassword);
+      await updateProfile(userCredential.user, { displayName: signupName });
+      
+      toast({ title: 'Success', description: 'Account created successfully!' });
+      router.push('/sites');
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not create account.' });
+    } finally {
+      setIsSigningUp(false);
+    }
   };
-  
-  if (!isClient || userLoading || currentUser) {
+
+  if (!isClient || userLoading || user) {
     return (
         <div className="container mx-auto p-4 md:p-6 flex justify-center items-center h-[80vh]">
             <Card className="w-full max-w-sm">
@@ -117,9 +122,9 @@ export default function AuthPage() {
   }
 
   const renderPasswordField = (
-    value: string, 
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, 
-    show: boolean, 
+    value: string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+    show: boolean,
     setShow: (s: boolean) => void,
     id: string,
     onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -157,17 +162,18 @@ export default function AuthPage() {
             <CardHeader>
               <CardTitle className="text-center">Login to Your Account</CardTitle>
               <CardDescription className="text-center">
-                Enter your username and password to access your work sites.
+                Enter your email and password to access your work sites.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-name">Username</Label>
+                <Label htmlFor="login-email">Email</Label>
                 <Input
-                  id="login-name"
-                  placeholder="e.g., John Doe"
-                  value={loginName}
-                  onChange={(e) => setLoginName(e.target.value)}
+                  id="login-email"
+                  type="email"
+                  placeholder="e.g., john.doe@example.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                 />
               </div>
@@ -186,17 +192,28 @@ export default function AuthPage() {
             <CardHeader>
               <CardTitle className="text-center">Create a New Account</CardTitle>
               <CardDescription className="text-center">
-                Choose a username and password to get started.
+                Choose a username, email, and password to get started.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+               <div className="space-y-2">
                 <Label htmlFor="signup-name">Username</Label>
                 <Input
                   id="signup-name"
-                  placeholder="e.g., Jane Smith"
+                  placeholder="e.g., John Doe"
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-email">Email</Label>
+                <Input
+                  id="signup-email"
+                  type="email"
+                  placeholder="e.g., john.doe@example.com"
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
                 />
               </div>

@@ -11,13 +11,13 @@ import { PlaceForm } from '@/components/places/PlaceForm';
 import { PlaceCard } from '@/components/places/PlaceCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/contexts/UserContext';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUser } from '@/firebase/auth/use-user';
 
 export default function SitesPage() {
   const { places, loading: dataLoading } = useData();
-  const { currentUser, loading: userLoading } = useUser();
+  const { data: user, isLoading: userLoading } = useUser();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -30,14 +30,14 @@ export default function SitesPage() {
   }, []);
 
   useEffect(() => {
-    if (isClient && !userLoading && !currentUser) {
+    if (isClient && !userLoading && !user) {
       router.replace('/');
     }
-  }, [isClient, userLoading, currentUser, router]);
+  }, [isClient, userLoading, user, router]);
 
   const loading = userLoading || dataLoading;
   
-  if (!isClient || loading || !currentUser) {
+  if (!isClient || loading || !user) {
     return (
         <div className="container mx-auto p-4 md:p-6">
              <div className="flex items-center justify-between mb-6">

@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useData } from '@/contexts/DataContext';
 import type { DailyRecord } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -52,11 +52,15 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
   });
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const validCosts = values.additionalCosts?.filter(c => c.description && c.amount).map(c => ({...c, amount: Number(c.amount)})) || [];
-    addOrUpdateRecord(placeId, { ...values, date: record.date, additionalCosts: validCosts });
-    toast({ title: 'Success', description: 'Record updated.' });
-    setModalOpen(false);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const validCosts = values.additionalCosts?.filter(c => c.description && c.amount).map(c => ({...c, amount: Number(c.amount)})) || [];
+      await addOrUpdateRecord(placeId, { ...values, date: record.date, additionalCosts: validCosts });
+      toast({ title: 'Success', description: 'Record updated.' });
+      setModalOpen(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || "Could not update record." });
+    }
   }
 
   return (
@@ -157,12 +161,11 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className={cn("w-full btn-gradient-primary")}>
+        <Button type="submit" className={cn("w-full btn-gradient-primary")} disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting && <Loader2 className="animate-spin mr-2" />}
           Save Changes
         </Button>
       </form>
     </Form>
   );
 }
-
-    

@@ -7,7 +7,7 @@ import { DailyRecord } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Users, HardHat, DollarSign, StickyNote } from 'lucide-react';
+import { Edit, Trash2, Users, HardHat, DollarSign, StickyNote, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
@@ -25,6 +25,7 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
     const { getPlaceById, deleteRecord } = useData();
     const { toast } = useToast();
     const [isEditModalOpen, setEditModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const isMobile = useIsMobile();
 
     const place = getPlaceById(placeId);
@@ -34,9 +35,16 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
     const additionalCostsTotal = (record.additionalCosts || []).reduce((acc, cost) => acc + (cost.amount || 0), 0);
     const total = workerCost + labourerCost + additionalCostsTotal;
 
-    const handleDelete = () => {
-        deleteRecord(placeId, record.id);
-        toast({ title: 'Success', description: 'Record deleted.' });
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteRecord(placeId, record.id);
+            toast({ title: 'Success', description: 'Record deleted.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete record.' });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const EditRecordDialog = () => (
@@ -106,7 +114,10 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+                                    {isDeleting && <Loader2 className="animate-spin mr-2" />}
+                                    Delete
+                                </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>

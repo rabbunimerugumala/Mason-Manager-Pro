@@ -1,3 +1,5 @@
+import { FieldValue } from "firebase/firestore";
+
 export interface AdditionalCost {
   id: string;
   description: string;
@@ -9,20 +11,18 @@ export interface DailyRecord {
   date: string; // ISO string 'YYYY-MM-DD'
   workers: number;
   labourers: number;
-  additionalCosts: AdditionalCost[];
+  additionalCosts: Omit<AdditionalCost, 'id'>[];
   notes?: string;
+  createdAt?: FieldValue;
+  updatedAt?: FieldValue;
 }
 
 export interface Place {
-  id:string;
+  id: string;
   name: string;
   workerRate: number;
   labourerRate: number;
   records: DailyRecord[];
-}
-
-export interface User {
-  id: string;
-  name: string;
-  password?: string;
+  createdAt?: FieldValue;
+  updatedAt?: FieldValue;
 }

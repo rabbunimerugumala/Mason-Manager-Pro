@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Loader2, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
   Table,
@@ -53,13 +53,21 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
   const { deleteRecord, getPlaceById } = useData();
   const { toast } = useToast();
   const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   const place = getPlaceById(placeId);
 
-  const handleDelete = (recordId: string) => {
-    deleteRecord(placeId, recordId);
-    toast({ title: 'Success', description: 'Record deleted.' });
+  const handleDelete = async (recordId: string) => {
+    setDeletingRecordId(recordId);
+    try {
+        await deleteRecord(placeId, recordId);
+        toast({ title: 'Success', description: 'Record deleted.' });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete record.' });
+    } finally {
+        setDeletingRecordId(null);
+    }
   };
   
   const sortedRecords = [...records].sort((a, b) => b.date.localeCompare(a.date));
@@ -153,7 +161,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
+                      {deletingRecordId === record.id ? <Loader2 className="animate-spin" /> : <Trash2 className="h-4 w-4" />}
                       <span className="sr-only">Delete Record</span>
                     </Button>
                   </AlertDialogTrigger>

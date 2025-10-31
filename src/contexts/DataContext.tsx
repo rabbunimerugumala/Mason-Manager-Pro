@@ -1,193 +1,284 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Place, DailyRecord, AdditionalCost } from '@/lib/types';
-import { subDays, format } from 'date-fns';
-import { useUser } from './UserContext';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import type { Place, DailyRecord, AdditionalCost } from '@/lib/types';
+import { useUser } from '@/firebase/auth/use-user';
+import {
+  collection,
+  doc,
+  writeBatch,
+  serverTimestamp,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  query,
+  onSnapshot,
+  Unsubscribe,
+} from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/hooks';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { useFirestore as useFirestoreInstance } from '@/firebase/firestore/use-firestore';
 
 interface DataContextType {
   places: Place[];
   loading: boolean;
-  addPlace: (place: Omit<Place, 'id' | 'records'>) => void;
-  updatePlace: (place: Place) => void;
-  deletePlace: (placeId: string) => void;
+  addPlace: (place: Omit<Place, 'id' | 'records'>) => Promise<void>;
+  updatePlace: (place: Place) => Promise<void>;
+  deletePlace: (placeId: string) => Promise<void>;
   getPlaceById: (placeId: string) => Place | undefined;
-  addOrUpdateRecord: (placeId: string, record: Omit<DailyRecord, 'id' | 'additionalCosts'> & { additionalCosts?: Omit<AdditionalCost, 'id'>[] }) => { success: boolean; message: string };
-  deleteRecord: (placeId: string, recordId: string) => void;
-  updatePlaceRates: (placeId: string, workerRate: number, labourerRate: number) => void;
-  clearData: () => void;
+  addOrUpdateRecord: (placeId: string, record: Omit<DailyRecord, 'id' | 'additionalCosts' | 'createdAt' | 'updatedAt'> & { additionalCosts?: Omit<AdditionalCost, 'id'>[] }) => Promise<void>;
+  deleteRecord: (placeId: string, recordId: string) => Promise<void>;
+  updatePlaceRates: (placeId: string, workerRate: number, labourerRate: number) => Promise<void>;
+  clearData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const DATA_KEY_PREFIX = 'mason-manager-pro-data-';
-
-const generateMockRecords = () => {
-  const records = [];
-  for (let i = 0; i < 15; i++) {
-    const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
-    records.push({
-      id: `rec-${Date.now()}-${i}`,
-      date: date,
-      workers: Math.floor(Math.random() * 5) + 8,
-      labourers: Math.floor(Math.random() * 8) + 10,
-      additionalCosts: Math.random() > 0.5 ? [{ id: `ac-${Date.now()}-${i}`, description: 'Cement', amount: Math.floor(Math.random() * 1000) + 500 }] : [],
-    });
-  }
-  return records;
-};
-
-const getInitialData = (): Place[] => {
-  return [
-    {
-      id: '1',
-      name: 'Downtown Skyscraper',
-      workerRate: 1000,
-      labourerRate: 600,
-      records: generateMockRecords(),
-    },
-    {
-      id: '2',
-      name: 'Suburban Villa',
-      workerRate: 900,
-      labourerRate: 550,
-      records: [
-         { id: '2-1', date: format(new Date(), 'yyyy-MM-dd'), workers: 8, labourers: 10, additionalCosts: [] },
-      ],
-    },
-  ];
-};
-
-
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { currentUser, loading: userLoading } = useUser();
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: user } = useUser();
+  const firestore = useFirestoreInstance();
   
-  const DATA_KEY = currentUser ? `${DATA_KEY_PREFIX}${currentUser.name.toLowerCase()}` : '';
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [recordsByPlace, setRecordsByPlace] = useState<Record<string, DailyRecord[]>>({});
+  const [loading, setLoading] = useState(true);
+
+  const placesCollection = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return collection(firestore, 'users', user.uid, 'places');
+  }, [firestore, user]);
 
   useEffect(() => {
-    if (userLoading) return;
-    setLoading(true);
-
-    if (!currentUser || !DATA_KEY) {
+    if (!placesCollection) {
       setPlaces([]);
       setLoading(false);
+      return () => {};
+    }
+
+    setLoading(true);
+    const unsubscribePlaces = onSnapshot(placesCollection, (snapshot) => {
+      const placesData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Place));
+      setPlaces(placesData);
+      setLoading(false);
+    }, (error) => {
+        console.error("Error fetching places:", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribePlaces();
+  }, [placesCollection]);
+
+  useEffect(() => {
+    if (!firestore || !user || places.length === 0) {
+      setRecordsByPlace({});
       return;
     }
 
-    try {
-      const savedData = localStorage.getItem(DATA_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        if (parsedData && parsedData.length > 0) {
-            setPlaces(parsedData);
-        } else {
-            setPlaces(getInitialData());
-        }
-      } else {
-        setPlaces(getInitialData());
-      }
-    } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-      setPlaces(getInitialData());
-    }
-    setLoading(false);
-  }, [currentUser, userLoading, DATA_KEY]);
+    const unsubscribers: Unsubscribe[] = [];
 
-  useEffect(() => {
-    if (!loading && !userLoading && DATA_KEY) {
-      try {
-        localStorage.setItem(DATA_KEY, JSON.stringify(places));
-      } catch (error) {
-        console.error("Failed to save data to localStorage", error);
-      }
-    }
-  }, [places, loading, userLoading, DATA_KEY]);
+    places.forEach(place => {
+      const recordsCollection = collection(firestore, 'users', user.uid, 'places', place.id, 'records');
+      const unsubscribe = onSnapshot(recordsCollection, (snapshot) => {
+        const recordsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as DailyRecord));
+        setRecordsByPlace(prev => ({ ...prev, [place.id]: recordsData }));
+      }, (error) => {
+        console.error(`Error fetching records for place ${place.id}:`, error);
+      });
+      unsubscribers.push(unsubscribe);
+    });
 
-  const addPlace = useCallback((placeData: Omit<Place, 'id' | 'records'>) => {
-    const newPlace: Place = {
-      ...placeData,
-      id: new Date().getTime().toString(),
-      records: [],
-      workerRate: placeData.workerRate || 0,
-      labourerRate: placeData.labourerRate || 0
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
     };
-    setPlaces(prev => [...prev, newPlace]);
-  }, []);
 
-  const updatePlace = useCallback((updatedPlace: Place) => {
-    setPlaces(prev => prev.map(p => p.id === updatedPlace.id ? updatedPlace : p));
-  }, []);
+  }, [firestore, user, places]);
 
-  const deletePlace = useCallback((placeId: string) => {
-    setPlaces(prev => prev.filter(p => p.id !== placeId));
-  }, []);
+
+  const placesWithRecords = useMemo(() => {
+    return places.map(place => ({
+      ...place,
+      records: recordsByPlace[place.id] || [],
+    }));
+  }, [places, recordsByPlace]);
+
+
+  const addPlace = useCallback(async (placeData: Omit<Place, 'id' | 'records'>) => {
+    if (!placesCollection) throw new Error('User not authenticated.');
+    const newPlace = {
+      ...placeData,
+      workerRate: placeData.workerRate || 0,
+      labourerRate: placeData.labourerRate || 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    
+    addDoc(placesCollection, newPlace).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: placesCollection.path,
+        operation: 'create',
+        requestResourceData: newPlace,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError;
+    });
+
+  }, [placesCollection]);
+
+  const updatePlace = useCallback(async (updatedPlace: Place) => {
+    if (!placesCollection) throw new Error('User not authenticated.');
+    const placeRef = doc(placesCollection, updatedPlace.id);
+    const dataToUpdate = {
+        name: updatedPlace.name,
+        workerRate: updatedPlace.workerRate,
+        labourerRate: updatedPlace.labourerRate,
+        updatedAt: serverTimestamp()
+    };
+    updateDoc(placeRef, dataToUpdate).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: placeRef.path,
+        operation: 'update',
+        requestResourceData: dataToUpdate,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError;
+    });
+  }, [placesCollection]);
+
+  const deletePlace = useCallback(async (placeId: string) => {
+    if (!firestore || !user) throw new Error('User not authenticated.');
+    const placeRef = doc(firestore, 'users', user.uid, 'places', placeId);
+    
+    const recordsCollection = collection(placeRef, 'records');
+    const recordsSnapshot = await getDocs(recordsCollection);
+    const batch = writeBatch(placeRef.firestore);
+    recordsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    batch.delete(placeRef);
+
+    batch.commit().catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: placeRef.path,
+        operation: 'delete'
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError;
+    });
+  }, [firestore, user]);
 
   const getPlaceById = useCallback((placeId: string) => {
-    return places.find(p => p.id === placeId);
-  }, [places]);
+    return placesWithRecords.find(p => p.id === placeId);
+  }, [placesWithRecords]);
 
-  const addOrUpdateRecord = useCallback((placeId: string, recordData: Omit<DailyRecord, 'id' | 'additionalCosts'> & { additionalCosts?: Omit<AdditionalCost, 'id'>[] }) => {
-    let message = '';
-    setPlaces(prev => prev.map(p => {
-      if (p.id === placeId) {
-        const existingRecordIndex = p.records.findIndex(r => r.date === recordData.date);
-        let newRecords;
+  const addOrUpdateRecord = useCallback(async (placeId: string, recordData: Omit<DailyRecord, 'id' | 'additionalCosts' | 'createdAt' | 'updatedAt'> & { additionalCosts?: Omit<AdditionalCost, 'id'>[] }) => {
+      if (!firestore || !user) throw new Error("User not authenticated.");
+      
+      const place = placesWithRecords.find(p => p.id === placeId);
+      if (!place) throw new Error("Place not found.");
 
-        const newAdditionalCosts = (recordData.additionalCosts || [])
+      const recordsCol = collection(firestore, 'users', user.uid, 'places', placeId, 'records');
+
+      const existingRecord = place.records.find(r => r.date === recordData.date);
+
+      const newAdditionalCosts = (recordData.additionalCosts || [])
           .filter(cost => cost.description && cost.amount > 0)
-          .map(cost => ({
-            ...cost,
-            id: new Date().getTime().toString() + Math.random(),
-        }));
+          .map(cost => ({ ...cost, amount: Number(cost.amount) }));
 
-        if (existingRecordIndex > -1) {
-          newRecords = [...p.records];
-          const existingRecord = newRecords[existingRecordIndex];
-          newRecords[existingRecordIndex] = { 
-            ...existingRecord, 
-            ...recordData,
-            additionalCosts: newAdditionalCosts,
-          };
-          message = "Today's record updated.";
-        } else {
-          const newRecord: DailyRecord = { 
-            ...recordData, 
-            id: new Date().getTime().toString(),
-            additionalCosts: newAdditionalCosts,
-          };
-          newRecords = [...p.records, newRecord].sort((a, b) => b.date.localeCompare(a.date));
-          message = "Today's record saved.";
-        }
-        return { ...p, records: newRecords };
+      if (existingRecord) {
+        const recordRef = doc(recordsCol, existingRecord.id);
+        const dataToUpdate = {
+          ...recordData,
+          additionalCosts: newAdditionalCosts,
+          updatedAt: serverTimestamp()
+        };
+        updateDoc(recordRef, dataToUpdate).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: recordRef.path,
+                operation: 'update',
+                requestResourceData: dataToUpdate
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        });
+      } else {
+        const newRecord = {
+          ...recordData,
+          additionalCosts: newAdditionalCosts,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        addDoc(recordsCol, newRecord).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: recordsCol.path,
+                operation: 'create',
+                requestResourceData: newRecord
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        });
       }
-      return p;
-    }));
-    return { success: true, message };
-  }, []);
+  }, [firestore, user, placesWithRecords]);
 
-  const deleteRecord = useCallback((placeId: string, recordId: string) => {
-    setPlaces(prev => prev.map(p => {
-      if (p.id === placeId) {
-        return { ...p, records: p.records.filter(r => r.id !== recordId) };
-      }
-      return p;
-    }));
-  }, []);
 
-  const updatePlaceRates = useCallback((placeId: string, workerRate: number, labourerRate: number) => {
-    setPlaces(prev => prev.map(p => p.id === placeId ? { ...p, workerRate, labourerRate } : p));
-  }, []);
+  const deleteRecord = useCallback(async (placeId: string, recordId: string) => {
+    if (!firestore || !user) throw new Error("User not authenticated.");
+    const recordRef = doc(firestore, 'users', user.uid, 'places', placeId, 'records', recordId);
+    
+    deleteDoc(recordRef).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: recordRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw permissionError;
+    });
 
-  const clearData = useCallback(() => {
-    if (DATA_KEY) {
-      setPlaces([]);
-      localStorage.removeItem(DATA_KEY);
+  }, [firestore, user]);
+
+  const updatePlaceRates = useCallback(async (placeId: string, workerRate: number, labourerRate: number) => {
+    if (!placesCollection) throw new Error('User not authenticated.');
+    const placeRef = doc(placesCollection, placeId);
+    const dataToUpdate = { workerRate, labourerRate, updatedAt: serverTimestamp() };
+
+    updateDoc(placeRef, dataToUpdate).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: placeRef.path,
+            operation: 'update',
+            requestResourceData: dataToUpdate
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw permissionError;
+    });
+
+  }, [placesCollection]);
+
+  const clearData = useCallback(async () => {
+    if (!firestore || !user) return;
+    const placesCol = collection(firestore, 'users', user.uid, 'places');
+    const snapshot = await getDocs(placesCol);
+    const batch = writeBatch(firestore);
+    
+    for (const placeDoc of snapshot.docs) {
+        const recordsCol = collection(placeDoc.ref, 'records');
+        const recordsSnapshot = await getDocs(recordsCol);
+        recordsSnapshot.forEach(recDoc => batch.delete(recDoc.ref));
+        batch.delete(placeDoc.ref);
     }
-  }, [DATA_KEY]);
+    
+    batch.commit().catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: placesCol.path,
+        operation: 'delete',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError;
+    });
 
-  const value = { places, loading, addPlace, updatePlace, deletePlace, getPlaceById, addOrUpdateRecord, deleteRecord, updatePlaceRates, clearData };
+  }, [firestore, user]);
+
+
+  const value = { places: placesWithRecords, loading, addPlace, updatePlace, deletePlace, getPlaceById, addOrUpdateRecord, deleteRecord, updatePlaceRates, clearData };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

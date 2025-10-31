@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Loader2 } from 'lucide-react';
 import type { Place } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
@@ -23,11 +23,19 @@ export function PlaceCard({ place }: PlaceCardProps) {
   const { deletePlace } = useData();
   const { toast } = useToast();
   const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
 
-  const handleDelete = () => {
-    deletePlace(place.id);
-    toast({ title: 'Success', description: 'Work site deleted.' });
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+        await deletePlace(place.id);
+        toast({ title: 'Success', description: 'Work site deleted.' });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete site.' });
+    } finally {
+        setIsDeleting(false);
+    }
   };
 
   const EditPlaceDialog = () => (
@@ -116,6 +124,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+                  {isDeleting ? <Loader2 className="animate-spin mr-2" /> : null}
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

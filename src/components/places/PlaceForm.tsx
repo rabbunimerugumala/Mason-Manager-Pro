@@ -10,6 +10,7 @@ import { useData } from '@/contexts/DataContext';
 import type { Place } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -35,21 +36,25 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     const data = {
         ...values,
         workerRate: Number(values.workerRate) || 0,
         labourerRate: Number(values.labourerRate) || 0,
     }
-    if (place) {
-      updatePlace({ ...place, ...data });
-      toast({ title: 'Success', description: 'Work site updated.' });
-    } else {
-      addPlace(data);
-      toast({ title: 'Success', description: 'New work site created.' });
+    try {
+      if (place) {
+        await updatePlace({ ...place, ...data });
+        toast({ title: 'Success', description: 'Work site updated.' });
+      } else {
+        await addPlace(data);
+        toast({ title: 'Success', description: 'New work site created.' });
+      }
+      setModalOpen(false);
+      form.reset();
+    } catch(error: any) {
+       toast({ variant: 'destructive', title: 'Error', description: error.message || "Could not save the site." });
     }
-    setModalOpen(false);
-    form.reset();
   }
 
   return (
@@ -94,7 +99,8 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className={cn('w-full', 'btn-gradient-primary')}>
+        <Button type="submit" className={cn('w-full', 'btn-gradient-primary')} disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting && <Loader2 className="animate-spin mr-2"/>}
           {place ? 'Save Changes' : 'Create Site'}
         </Button>
       </form>
