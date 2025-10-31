@@ -1,0 +1,262 @@
+{
+  "entities": {
+    "Place": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Place",
+      "type": "object",
+      "description": "Represents a construction site or project location.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Place entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the place (construction site)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the place was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the place was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DailyRecord",
+      "type": "object",
+      "description": "Represents a daily record of worker/labourer counts and notes for a specific place.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DailyRecord entity."
+        },
+        "placeId": {
+          "type": "string",
+          "description": "Reference to Place. (Relationship: Place 1:N DailyRecord)"
+        },
+        "date": {
+          "type": "string",
+          "description": "The date for which the record is created.",
+          "format": "date"
+        },
+        "workerCount": {
+          "type": "number",
+          "description": "Number of workers for the day."
+        },
+        "labourerCount": {
+          "type": "number",
+          "description": "Number of labourers for the day."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes for the day's record."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "placeId",
+        "date",
+        "workerCount",
+        "labourerCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PaymentRate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentRate",
+      "type": "object",
+      "description": "Represents the payment rates for workers and labourers at a specific place.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PaymentRate entity."
+        },
+        "placeId": {
+          "type": "string",
+          "description": "Reference to Place. (Relationship: Place 1:N PaymentRate)"
+        },
+        "workerRate": {
+          "type": "number",
+          "description": "Payment rate for workers."
+        },
+        "labourerRate": {
+          "type": "number",
+          "description": "Payment rate for labourers."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "placeId",
+        "workerRate",
+        "labourerRate",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents the user data with name and phone number.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the user."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number of the user. Must be 10 digits."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "phoneNumber",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, indexed by their unique user ID. Phone number validation will be implemented in security rules. All user-related data is scoped under this collection for path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/places/{placeId}",
+        "definition": {
+          "entityName": "Place",
+          "schema": {
+            "$ref": "#/backend/entities/Place"
+          },
+          "description": "Stores information about construction sites or project locations managed by the user. Includes denormalized 'userId' for authorization independence. The place documents are path based user owned.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "placeId",
+              "description": "The unique identifier for the place."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId}",
+        "definition": {
+          "entityName": "DailyRecord",
+          "schema": {
+            "$ref": "#/backend/entities/DailyRecord"
+          },
+          "description": "Stores daily records of worker and labourer counts for a specific place. Includes denormalized 'userId' and 'placeId' for authorization independence. The daily record documents are path based user and place owned.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "placeId",
+              "description": "The unique identifier for the place."
+            },
+            {
+              "name": "dailyRecordId",
+              "description": "The unique identifier for the daily record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/places/{placeId}/paymentRates/{paymentRateId}",
+        "definition": {
+          "entityName": "PaymentRate",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentRate"
+          },
+          "description": "Stores payment rates for workers and labourers at a specific place. Includes denormalized 'userId' and 'placeId' for authorization independence.  The payment rate documents are path based user and place owned.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "placeId",
+              "description": "The unique identifier for the place."
+            },
+            {
+              "name": "paymentRateId",
+              "description": "The unique identifier for the payment rate."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to manage construction site data, daily records, and payment rates while adhering to the principles of Authorization Independence and structural segregation. Each user has their own set of data related to places, daily records, and payment rates, ensuring data isolation and simplified security rules. This approach supports the application's requirement for offline functionality and full CRUD operations on all major data entities.The structure promotes authorization independence by avoiding hierarchical authorization dependencies and storing all necessary authorization information within each document. This design enables secure 'list' operations. It's also important to note that the User collection could be alternatively handled by Firebase Authentication, removing the need for storing user details in Firestore, but we proceeded assuming the need to store extra user data (name, phone number)"
+  }
+}
