@@ -5,19 +5,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Loader2,LogIn, KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/firebase/provider';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile,
-} from 'firebase/auth';
+import { RecaptchaVerifier, signInWithPhoneNumber, updateProfile, ConfirmationResult } from 'firebase/auth';
 import { useUser } from '@/firebase/auth/use-user.tsx';
+import 'react-phone-input-2/lib/style.css';
+import PhoneInput from 'react-phone-input-2';
+
+
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier;
+    confirmationResult?: ConfirmationResult;
+  }
+}
 
 export default function AuthPage() {
   const auth = useAuth();
@@ -25,16 +30,12 @@ export default function AuthPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  const [signupName, setSignupName] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [isSigningUp, setIsSigningUp] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   // This state will help us avoid hydration errors
   const [isClient, setIsClient] = useState(false);
@@ -50,184 +51,152 @@ export default function AuthPage() {
     }
   }, [isClient, userLoading, user, router]);
 
-  const handleLogin = async () => {
+  const setupRecaptcha = () => {
     if (!auth) return;
-    if (!loginEmail || !loginPassword) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter both email and password.' });
-      return;
-    }
-    setIsLoggingIn(true);
-    try {
-      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-      toast({ title: 'Success', description: 'Logged in successfully.' });
-      router.push('/sites');
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Invalid email or password.' });
-    } finally {
-      setIsLoggingIn(false);
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: (response: any) => {
+          // reCAPTCHA solved, allow signInWithPhoneNumber.
+        },
+      });
     }
   };
 
-  const handleSignup = async () => {
+  const handleSendOtp = async () => {
     if (!auth) return;
-    if (!signupName || !signupEmail || !signupPassword) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please fill out all fields.' });
+    if (!name || !phone) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter your name and phone number.' });
       return;
     }
-    if (signupPassword.length < 6) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 6 characters.' });
-      return;
-    }
-
-    setIsSigningUp(true);
+    
+    setIsSendingOtp(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, signupEmail, signupPassword);
-      await updateProfile(userCredential.user, { displayName: signupName });
+      setupRecaptcha();
+      const appVerifier = window.recaptchaVerifier!;
+      const confirmationResult = await signInWithPhoneNumber(auth, `+${phone}`, appVerifier);
+      window.confirmationResult = confirmationResult;
+      setOtpSent(true);
+      toast({ title: 'OTP Sent', description: 'An OTP has been sent to your phone number.' });
+    } catch (error: any) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to send OTP.' });
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || !window.confirmationResult) return;
+    setIsVerifyingOtp(true);
+    try {
+      const result = await window.confirmationResult.confirm(otp);
+      const user = result.user;
       
-      toast({ title: 'Success', description: 'Account created successfully!' });
+      // Update user's profile with the name
+      if (user) {
+        await updateProfile(user, { displayName: name });
+      }
+
+      toast({ title: 'Success', description: 'Logged in successfully.' });
       router.push('/sites');
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not create account.' });
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Invalid OTP.' });
     } finally {
-      setIsSigningUp(false);
+      setIsVerifyingOtp(false);
     }
   };
 
   if (!isClient || userLoading || user) {
     return (
-        <div className="container mx-auto p-4 md:p-6 flex justify-center items-center h-[80vh]">
-            <Card className="w-full max-w-sm">
-                <CardHeader>
-                    <Skeleton className="h-7 w-2/3 mx-auto" />
-                    <Skeleton className="h-4 w-full mx-auto" />
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex justify-center border-b">
-                        <Skeleton className="h-10 w-20 m-1" />
-                        <Skeleton className="h-10 w-20 m-1" />
-                    </div>
-                     <div className="space-y-2">
-                        <Skeleton className="h-4 w-1/4" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
-                     <div className="space-y-2">
-                        <Skeleton className="h-4 w-1/4" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
-                    <Skeleton className="h-10 w-full" />
-                </CardContent>
-            </Card>
-        </div>
-    )
+      <div className="container mx-auto p-4 md:p-6 flex justify-center items-center h-[80vh]">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <Skeleton className="h-7 w-2/3 mx-auto" />
+            <Skeleton className="h-4 w-full mx-auto" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-1/4" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-1/4" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-
-  const renderPasswordField = (
-    value: string,
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
-    show: boolean,
-    setShow: (s: boolean) => void,
-    id: string,
-    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  ) => (
-    <div className="relative">
-      <Input
-        id={id}
-        type={show ? 'text' : 'password'}
-        placeholder="********"
-        value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-        onClick={() => setShow(!show)}
-      >
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </Button>
-    </div>
-  );
 
   return (
     <div className="container mx-auto p-4 md:p-6 flex justify-center items-center min-h-[80vh]">
-      <Tabs defaultValue="login" className="w-full max-w-sm">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="signup">Sign Up</TabsTrigger>
-        </TabsList>
-        <TabsContent value="login">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Login to Your Account</CardTitle>
-              <CardDescription className="text-center">
-                Enter your email and password to access your work sites.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+       <div id="recaptcha-container"></div>
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-center">Welcome</CardTitle>
+          <CardDescription className="text-center">
+            {otpSent ? 'Enter the OTP sent to your phone.' : 'Enter your name and number to login.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!otpSent ? (
+            <>
               <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="name">Name</Label>
                 <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="e.g., john.doe@example.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="login-password">Password</Label>
-                {renderPasswordField(loginPassword, (e) => setLoginPassword(e.target.value), showLoginPassword, setShowLoginPassword, "login-password", (e) => e.key === 'Enter' && handleLogin())}
-              </div>
-              <Button onClick={handleLogin} disabled={isLoggingIn} className={cn('w-full btn-gradient-primary')}>
-                {isLoggingIn ? <Loader2 className="animate-spin"/> : 'Login'}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="signup">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Create a New Account</CardTitle>
-              <CardDescription className="text-center">
-                Choose a username, email, and password to get started.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-               <div className="space-y-2">
-                <Label htmlFor="signup-name">Username</Label>
-                <Input
-                  id="signup-name"
+                  id="name"
                   placeholder="e.g., John Doe"
-                  value={signupName}
-                  onChange={(e) => setSignupName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
-                <Input
-                  id="signup-email"
-                  type="email"
-                  placeholder="e.g., john.doe@example.com"
-                  value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                <Label htmlFor="phone">Phone Number</Label>
+                <PhoneInput
+                    country={'us'}
+                    value={phone}
+                    onChange={setPhone}
+                    inputProps={{
+                        id: 'phone',
+                        name: 'phone',
+                        required: true,
+                        autoFocus: true,
+                        className: 'w-full'
+                    }}
+                    containerClass="w-full"
+                    inputClass="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
-                 {renderPasswordField(signupPassword, (e) => setSignupPassword(e.target.value), showSignupPassword, setShowSignupPassword, "signup-password", (e) => e.key === 'Enter' && handleSignup())}
-              </div>
-              <Button onClick={handleSignup} disabled={isSigningUp} className={cn('w-full btn-gradient-primary')}>
-                {isSigningUp ? <Loader2 className="animate-spin"/> : 'Sign Up'}
+              <Button onClick={handleSendOtp} disabled={isSendingOtp} className={cn('w-full btn-gradient-primary')}>
+                {isSendingOtp ? <Loader2 className="animate-spin" /> : 'Send OTP'}
               </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="otp">One-Time Password (OTP)</Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  placeholder="Enter 6-digit OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleVerifyOtp()}
+                />
+              </div>
+              <Button onClick={handleVerifyOtp} disabled={isVerifyingOtp} className={cn('w-full btn-gradient-primary')}>
+                {isVerifyingOtp ? <Loader2 className="animate-spin mr-2" /> : <KeyRound className="mr-2" />}
+                Verify & Login
+              </Button>
+               <Button variant="link" onClick={() => setOtpSent(false)}>Back</Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
