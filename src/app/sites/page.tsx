@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/auth/use-user.tsx';
 
 export default function SitesPage() {
   const { places, loading: dataLoading } = useData();

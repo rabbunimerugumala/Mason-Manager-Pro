@@ -35,4 +35,6 @@ export function initializeFirebase(): {
 export * from './provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
-export * from './auth/use-user';
+// This export is intentionally removed to fix resolution issue.
+// `useUser` will be imported directly from its source file.
+// export * from './auth/use-user.tsx';

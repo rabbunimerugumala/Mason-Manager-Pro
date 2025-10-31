@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from '../ui/button';
 import { useAuth } from '@/firebase/provider';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/auth/use-user.tsx';
 
 export function Header() {
   const { data: user, isLoading } = useUser();

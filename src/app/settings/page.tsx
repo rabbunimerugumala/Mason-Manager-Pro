@@ -20,7 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/auth/use-user.tsx';
 
 export default function SettingsPage() {
   const { data: user, isLoading: userLoading } = useUser();
