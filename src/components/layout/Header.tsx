@@ -12,17 +12,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from '../ui/button';
-import { useUser } from '@/contexts/UserContext';
 import { Skeleton } from '../ui/skeleton';
+import { useAuth, useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
+import { signOut } from 'firebase/auth';
+
 
 export function Header() {
-  const { user, logout, loading } = useUser();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
+  const userDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
+  const handleLogout = async () => {
+    await signOut(auth);
     router.push('/');
   };
+
+  const loading = isUserLoading || isProfileLoading;
 
   return (
     <header className="sticky top-0 z-30 w-full border-b bg-card shadow-sm">
@@ -35,12 +49,12 @@ export function Header() {
         </Link>
         {loading ? (
           <Skeleton className="h-8 w-24" />
-        ) : user ? (
+        ) : user && userProfile ? (
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
                     <UserIcon className="h-5 w-5 text-muted-foreground" />
-                    <span className='font-semibold'>{user.name || user.phone}</span>
+                    <span className='font-semibold'>{userProfile.name || userProfile.phoneNumber}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">

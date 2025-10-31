@@ -10,14 +10,20 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/contexts/UserContext';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import 'react-phone-input-2/lib/style.css';
 import PhoneInput from 'react-phone-input-2';
+import { signInAnonymously } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
+
 
 export default function AuthPage() {
-  const { user, login } = useUser();
-  const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,32 +34,63 @@ export default function AuthPage() {
     setIsClient(true);
   }, []);
 
+  const userDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
+
   useEffect(() => {
-    // If the user is already logged in, redirect them to the sites page.
-    if (isClient && user) {
+    if (isClient && user && userProfile) {
       router.replace('/sites');
     }
-  }, [isClient, user, router]);
+  }, [isClient, user, userProfile, router]);
 
-  const handleLogin = () => {
-    if (!name || !phone) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter your name and phone number.' });
-      return;
+  const handleLogin = async () => {
+    if (!name.trim() || !/^\d{10}$/.test(phone)) {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Input',
+            description: 'Please enter a valid name and a 10-digit phone number.',
+        });
+        return;
     }
     
     setIsLoading(true);
     try {
-      login({ name, phone });
-      toast({ title: 'Success', description: 'Logged in successfully.' });
-      router.push('/sites');
+        const userCredential = await signInAnonymously(auth);
+        const userId = userCredential.user.uid;
+        
+        const userDoc = doc(firestore, 'users', userId);
+        
+        // Check if a user document already exists, perhaps from a previous session
+        const docSnap = await getDoc(userDoc);
+        
+        if (!docSnap.exists()) {
+             await setDoc(userDoc, {
+                id: userId,
+                name: name,
+                phoneNumber: phone,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+        }
+        
+        toast({ title: 'Success', description: 'Logged in successfully.' });
+        router.push('/sites');
+
     } catch (error: any) {
+      console.error("Login failed:", error);
       toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not log in.' });
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const effectiveLoading = isUserLoading || isProfileLoading;
 
-  if (!isClient || user) {
+  if (!isClient || effectiveLoading) {
     return (
       <div className="container mx-auto p-4 md:p-6 flex justify-center items-center h-[80vh]">
         <Card className="w-full max-w-sm">
@@ -76,6 +113,12 @@ export default function AuthPage() {
       </div>
     );
   }
+  
+  // If user is logged in and has a profile, they are redirected by the effect.
+  // If they are logged in but have no profile yet (e.g., first login), show login form to create it.
+  if (user && userProfile) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-6 flex justify-center items-center min-h-[80vh]">
@@ -83,7 +126,7 @@ export default function AuthPage() {
         <CardHeader>
           <CardTitle className="text-center">Welcome</CardTitle>
           <CardDescription className="text-center">
-            Enter your name and number to continue.
+            Enter your name and 10-digit number to continue.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -98,24 +141,19 @@ export default function AuthPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
-            <PhoneInput
-                country={'us'}
-                value={phone}
-                onChange={setPhone}
-                inputProps={{
-                    id: 'phone',
-                    name: 'phone',
-                    required: true,
-                    autoFocus: true,
-                    className: 'w-full'
-                }}
-                containerClass="w-full"
-                inputClass="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            <Label htmlFor="phone">10-Digit Phone Number</Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="1234567890"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+              maxLength={10}
             />
           </div>
           <Button onClick={handleLogin} disabled={isLoading} className={cn('w-full btn-gradient-primary')}>
-            {isLoading ? <Loader2 className="animate-spin" /> : 'Login'}
+            {isLoading ? <Loader2 className="animate-spin" /> : 'Login / Sign Up'}
           </Button>
         </CardContent>
       </Card>

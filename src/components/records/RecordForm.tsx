@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useData } from '@/contexts/DataContext';
 import type { DailyRecord } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
+import { useUser, useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { doc, serverTimestamp } from 'firebase/firestore';
+
 
 const additionalCostSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
@@ -33,8 +35,9 @@ interface RecordFormProps {
 }
 
 export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
-  const { addOrUpdateRecord } = useData();
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,9 +56,11 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) return;
     try {
       const validCosts = values.additionalCosts?.filter(c => c.description && c.amount).map(c => ({...c, amount: Number(c.amount)})) || [];
-      await addOrUpdateRecord(placeId, { ...values, date: record.date, additionalCosts: validCosts });
+      const recordRef = doc(firestore, 'users', user.uid, 'places', placeId, 'dailyRecords', record.id);
+      updateDocumentNonBlocking(recordRef, { ...values, additionalCosts: validCosts, updatedAt: serverTimestamp() });
       toast({ title: 'Success', description: 'Record updated.' });
       setModalOpen(false);
     } catch (error: any) {

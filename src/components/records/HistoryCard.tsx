@@ -1,10 +1,8 @@
-
 'use client';
 
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { DailyRecord } from '@/lib/types';
-import { useData } from '@/contexts/DataContext';
+import { DailyRecord, Place } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Users, HardHat, DollarSign, StickyNote, Loader2 } from 'lucide-react';
@@ -15,30 +13,34 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { RecordForm } from './RecordForm';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUser, useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
 
 interface HistoryCardProps {
     record: DailyRecord;
-    placeId: string;
+    place: Place;
 }
 
-export function HistoryCard({ record, placeId }: HistoryCardProps) {
-    const { getPlaceById, deleteRecord } = useData();
+export function HistoryCard({ record, place }: HistoryCardProps) {
     const { toast } = useToast();
+    const { user } = useUser();
+    const firestore = useFirestore();
     const [isEditModalOpen, setEditModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const isMobile = useIsMobile();
 
-    const place = getPlaceById(placeId);
-
-    const workerCost = record.workers * (place?.workerRate || 0);
-    const labourerCost = record.labourers * (place?.labourerRate || 0);
+    const workerCost = record.workers * (place.workerRate || 0);
+    const labourerCost = record.labourers * (place.labourerRate || 0);
     const additionalCostsTotal = (record.additionalCosts || []).reduce((acc, cost) => acc + (cost.amount || 0), 0);
     const total = workerCost + labourerCost + additionalCostsTotal;
 
     const handleDelete = async () => {
+        if (!user) return;
         setIsDeleting(true);
         try {
-            await deleteRecord(placeId, record.id);
+            const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', record.id);
+            deleteDocumentNonBlocking(recordRef);
             toast({ title: 'Success', description: 'Record deleted.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete record.' });
@@ -52,7 +54,7 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
             <DialogHeader>
                 <DialogTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DialogTitle>
             </DialogHeader>
-            <RecordForm record={record} placeId={placeId} setModalOpen={setEditModalOpen} />
+            <RecordForm record={record} placeId={place.id} setModalOpen={setEditModalOpen} />
         </>
     );
 
@@ -62,7 +64,7 @@ export function HistoryCard({ record, placeId }: HistoryCardProps) {
                 <DrawerTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DrawerTitle>
             </DrawerHeader>
             <div className="p-4">
-                <RecordForm record={record} placeId={placeId} setModalOpen={setEditModalOpen} />
+                <RecordForm record={record} placeId={place.id} setModalOpen={setEditModalOpen} />
             </div>
         </>
     );

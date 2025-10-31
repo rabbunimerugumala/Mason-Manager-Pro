@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { PlusCircle } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
 import type { Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -13,29 +12,34 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser } from '@/contexts/UserContext';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 export default function SitesPage() {
-  const { places, loading: dataLoading } = useData();
-  const { user, loading: userLoading } = useUser();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const router = useRouter();
   const isMobile = useIsMobile();
-
-  // This state will help us avoid hydration errors and handle redirection
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  const placesCollectionRef = useMemoFirebase(
+    () => (user ? collection(firestore, 'users', user.uid, 'places') : null),
+    [user, firestore]
+  );
+  const { data: places, isLoading: dataLoading } = useCollection<Place>(placesCollectionRef);
+
   useEffect(() => {
-    if (isClient && !userLoading && !user) {
+    if (isClient && !isUserLoading && !user) {
       router.replace('/');
     }
-  }, [isClient, userLoading, user, router]);
+  }, [isClient, isUserLoading, user, router]);
 
-  const loading = userLoading || dataLoading;
+  const loading = isUserLoading || dataLoading;
   
   if (!isClient || loading) {
     return (
@@ -117,7 +121,7 @@ export default function SitesPage() {
         )}
       </div>
 
-      {places.length > 0 ? (
+      {places && places.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {places.map((place: Place) => (
             <PlaceCard key={place.id} place={place} />

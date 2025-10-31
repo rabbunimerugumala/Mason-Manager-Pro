@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,20 +11,20 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar, Save, ArrowLeft, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
 import { format, startOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Place, AdditionalCost } from '@/lib/types';
+import { Place, AdditionalCost, DailyRecord } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/contexts/UserContext';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, where, serverTimestamp } from 'firebase/firestore';
 
 
 export default function PlaceDashboard() {
   const params = useParams();
-  const { getPlaceById, addOrUpdateRecord, updatePlaceRates, loading: dataLoading } = useData();
   const { toast } = useToast();
-  const { user, loading: userLoading } = useUser();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
-  const [place, setPlace] = useState<Place | undefined>(undefined);
   const [today, setToday] = useState('');
   const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
@@ -34,39 +33,73 @@ export default function PlaceDashboard() {
   const [labourerRate, setLabourerRate] = useState<number | ''>('');
   const [isSavingRecord, setIsSavingRecord] = useState(false);
   const [isSavingRates, setIsSavingRates] = useState(false);
+  const [todayRecordId, setTodayRecordId] = useState<string | null>(null);
+
+  const placeDocRef = useMemoFirebase(
+    () => (user && placeId ? doc(firestore, 'users', user.uid, 'places', placeId) : null),
+    [user, firestore, placeId]
+  );
+  const { data: place, isLoading: placeLoading } = useDoc<Place>(placeDocRef);
 
   useEffect(() => {
-    if (dataLoading || userLoading) return;
-    
-    const currentPlace = getPlaceById(placeId);
-    setPlace(currentPlace);
-
-    const date = new Date();
-    const formattedDate = format(date, 'yyyy-MM-dd');
+    const formattedDate = format(new Date(), 'yyyy-MM-dd');
     setToday(formattedDate);
+  }, []);
 
-    if (currentPlace) {
-      const todayRecord = currentPlace.records.find(r => r.date === formattedDate);
-      setWorkerCount(todayRecord?.workers || 0);
-      setLabourerCount(todayRecord?.labourers || 0);
-      const savedCosts = todayRecord?.additionalCosts || [];
-      setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(({...rest}) => ({...rest, amount: rest.amount || 0 })) : [{ description: '', amount: 0 }]);
-      setWorkerRate(currentPlace.workerRate || '');
-      setLabourerRate(currentPlace.labourerRate || '');
+  const todayRecordQuery = useMemoFirebase(() => {
+    if (!placeDocRef || !today) return null;
+    return query(collection(placeDocRef, 'dailyRecords'), where('date', '==', today));
+  }, [placeDocRef, today]);
+
+  const { data: todayRecords, isLoading: todayRecordLoading } = useCollection<DailyRecord>(todayRecordQuery);
+
+  useEffect(() => {
+    if (place) {
+      setWorkerRate(place.workerRate || '');
+      setLabourerRate(place.labourerRate || '');
     }
-  }, [placeId, getPlaceById, dataLoading, userLoading]);
+  }, [place]);
+  
+  useEffect(() => {
+    if (todayRecords && todayRecords.length > 0) {
+      const record = todayRecords[0];
+      setWorkerCount(record.workers || 0);
+      setLabourerCount(record.labourers || 0);
+      const savedCosts = record.additionalCosts || [];
+      setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(c => ({...c, amount: c.amount || 0})) : [{ description: '', amount: 0 }]);
+      setTodayRecordId(record.id);
+    } else {
+      // Reset if no record for today
+      setWorkerCount(0);
+      setLabourerCount(0);
+      setAdditionalCosts([{ description: '', amount: 0 }]);
+      setTodayRecordId(null);
+    }
+  }, [todayRecords]);
 
   const handleSaveRecord = async () => {
-    if (!place) return;
+    if (!place || !user) return;
     setIsSavingRecord(true);
     try {
       const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
-      await addOrUpdateRecord(place.id, {
+      const recordPayload = {
         date: today,
         workers: workerCount,
         labourers: labourerCount,
         additionalCosts: validAdditionalCosts,
-      });
+        updatedAt: serverTimestamp(),
+      };
+      
+      if (todayRecordId) {
+        // Update existing record
+        const recordRef = doc(placeDocRef!, 'dailyRecords', todayRecordId);
+        updateDocumentNonBlocking(recordRef, recordPayload);
+      } else {
+        // Add new record
+        const recordsCollectionRef = collection(placeDocRef!, 'dailyRecords');
+        addDocumentNonBlocking(recordsCollectionRef, {...recordPayload, createdAt: serverTimestamp() });
+      }
+      
       toast({ title: 'Success', description: "Record saved." });
     } catch(error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message || "Could not save record."});
@@ -76,10 +109,14 @@ export default function PlaceDashboard() {
   };
   
   const handleSaveRates = async () => {
-    if (!place) return;
+    if (!placeDocRef) return;
     setIsSavingRates(true);
     try {
-        await updatePlaceRates(place.id, Number(workerRate) || 0, Number(labourerRate) || 0);
+        updateDocumentNonBlocking(placeDocRef, { 
+            workerRate: Number(workerRate) || 0, 
+            labourerRate: Number(labourerRate) || 0,
+            updatedAt: serverTimestamp() 
+        });
         toast({ title: 'Success', description: 'Payment rates updated.' });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message || "Could not save rates."});
@@ -112,7 +149,6 @@ export default function PlaceDashboard() {
     setAdditionalCosts(newCosts);
   };
 
-
   const todayPayment = useMemo(() => {
     if (!place) return 0;
     const workersPayment = workerCount * (place.workerRate || 0);
@@ -120,31 +156,31 @@ export default function PlaceDashboard() {
     const otherCosts = additionalCosts.reduce((total, cost) => total + (Number(cost.amount) || 0), 0);
     return workersPayment + labourersPayment + otherCosts;
   }, [place, workerCount, labourerCount, additionalCosts]);
+
+  // For weekly payment, we need to fetch all records for the week.
+  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  
+  const weeklyRecordsQuery = useMemoFirebase(() => {
+      if (!placeDocRef) return null;
+      return query(collection(placeDocRef, 'dailyRecords'), where('date', '>=', weekStart));
+  }, [placeDocRef, weekStart]);
+
+  const {data: thisWeekRecords, isLoading: weekRecordsLoading} = useCollection<DailyRecord>(weeklyRecordsQuery);
   
   const thisWeekPayment = useMemo(() => {
-    if (!place) return 0;
-    const todayDate = new Date();
-    const start = startOfWeek(todayDate, { weekStartsOn: 1 });
-    const end = todayDate;
-    const thisWeekRecords = place.records.filter(r => {
-      try {
-        const recordDate = parseISO(r.date);
-        return isWithinInterval(recordDate, { start, end });
-      } catch (e) {
-        return false;
-      }
-    });
-
+    if (!place || !thisWeekRecords) return 0;
+    
     return thisWeekRecords.reduce((total, record) => {
       const workerTotal = record.workers * (place.workerRate || 0);
       const labourerTotal = record.labourers * (place.labourerRate || 0);
       const newAdditionalCosts = (record.additionalCosts || []).reduce((acc, cost) => acc + (cost.amount || 0), 0);
       return total + workerTotal + labourerTotal + newAdditionalCosts;
     }, 0);
-  }, [place]);
+  }, [place, thisWeekRecords]);
 
+  const loading = isUserLoading || placeLoading || todayRecordLoading;
 
-  if (dataLoading || userLoading) {
+  if (loading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -257,7 +293,7 @@ export default function PlaceDashboard() {
               
               <Button onClick={handleSaveRecord} disabled={isSavingRecord} className={cn("w-full btn-gradient-primary")}>
                 {isSavingRecord ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
-                {place.records.some(r => r.date === today) ? 'Update Today\'s Record' : 'Save Today\'s Record'}
+                {todayRecordId ? 'Update Today\'s Record' : 'Save Today\'s Record'}
               </Button>
             </CardContent>
           </Card>

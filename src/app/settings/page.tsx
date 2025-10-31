@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -20,36 +19,66 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/contexts/UserContext';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, deleteDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
+
 
 export default function SettingsPage() {
-  const { user, loading: userLoading } = useUser();
-  const { clearData, loading: dataLoading } = useData();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
-    if (isClient && !userLoading && !user) {
+    if (isClient && !isUserLoading && !user) {
       router.replace('/');
     }
-  }, [isClient, userLoading, user, router]);
+  }, [isClient, isUserLoading, user, router]);
 
   const handleClearData = async () => {
-    await clearData();
-    toast({
-      title: 'Data Cleared',
-      description: 'All your site and record data has been deleted.',
-    });
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You are not logged in.' });
+        return;
+    }
+    setIsDeleting(true);
+    try {
+        const placesRef = collection(firestore, 'users', user.uid, 'places');
+        const placesSnap = await getDocs(placesRef);
+        const batch = writeBatch(firestore);
+
+        for (const placeDoc of placesSnap.docs) {
+            // Delete subcollections of each place
+            const recordsRef = collection(placeDoc.ref, 'dailyRecords');
+            const recordsSnap = await getDocs(recordsRef);
+            recordsSnap.forEach(snap => batch.delete(snap.ref));
+            
+            // Delete the place itself
+            batch.delete(placeDoc.ref);
+        }
+        
+        // Delete the user document
+        batch.delete(doc(firestore, 'users', user.uid));
+
+        await batch.commit();
+
+        toast({
+          title: 'Data Cleared',
+          description: 'All your site and record data has been deleted.',
+        });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not clear data.' });
+    } finally {
+        setIsDeleting(false);
+    }
   };
   
-  const loading = userLoading || dataLoading;
-
-  if (!isClient || loading) {
+  if (!isClient || isUserLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -81,8 +110,8 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between rounded-lg border border-destructive/50 p-4">
-            <div className="mb-4 md:mb-0 md:mr-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border border-destructive/50 p-4">
+            <div className="mb-4 sm:mb-0 sm:mr-4">
               <h3 className="font-semibold">Clear All My Data</h3>
               <p className="text-sm text-muted-foreground">
                 This will permanently delete all your work sites and records from this device.
@@ -90,7 +119,7 @@ export default function SettingsPage() {
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="shrink-0">
+                <Button variant="destructive" className="shrink-0 w-full sm:w-auto">
                   <Trash2 className="mr-2 h-4 w-4" />
                   Clear Data
                 </Button>
@@ -101,17 +130,19 @@ export default function SettingsPage() {
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete all
                     of your data, including all work sites and their associated
-                    records from this device.
+                    records.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleClearData}
+                    disabled={isDeleting}
                     className={cn(
                       'bg-destructive text-destructive-foreground hover:bg-destructive/90'
                     )}
                   >
+                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Yes, delete everything
                   </AlertDialogAction>
                 </AlertDialogFooter>

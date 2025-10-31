@@ -6,11 +6,12 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useData } from '@/contexts/DataContext';
 import type { Place } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { useUser, useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -24,8 +25,9 @@ interface PlaceFormProps {
 }
 
 export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
-  const { addPlace, updatePlace } = useData();
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,6 +39,10 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Error', description: "You must be logged in to save a site." });
+      return;
+    }
     const data = {
         ...values,
         workerRate: Number(values.workerRate) || 0,
@@ -44,10 +50,12 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
     }
     try {
       if (place) {
-        await updatePlace({ ...place, ...data });
+        const placeRef = doc(firestore, 'users', user.uid, 'places', place.id);
+        updateDocumentNonBlocking(placeRef, { ...data, updatedAt: serverTimestamp() });
         toast({ title: 'Success', description: 'Work site updated.' });
       } else {
-        await addPlace(data);
+        const placesCollection = collection(firestore, 'users', user.uid, 'places');
+        addDocumentNonBlocking(placesCollection, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         toast({ title: 'Success', description: 'New work site created.' });
       }
       setModalOpen(false);

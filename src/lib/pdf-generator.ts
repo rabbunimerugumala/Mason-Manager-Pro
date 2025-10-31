@@ -3,7 +3,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Place } from './types';
+import { Place, DailyRecord } from './types';
 import { format, getWeek, getYear, parseISO, startOfWeek, endOfWeek, add, subDays, Day } from 'date-fns';
 
 interface AutoTableDoc extends jsPDF {
@@ -17,7 +17,7 @@ function getWeekMonToSat(date: Date) {
     return { start, end };
 }
 
-export function generatePdf(place: Place) {
+export function generatePdf(place: Place, records: DailyRecord[]) {
   const doc = new jsPDF() as AutoTableDoc;
   const workerRate = place.workerRate || 0;
   const labourerRate = place.labourerRate || 0;
@@ -30,7 +30,7 @@ export function generatePdf(place: Place) {
   doc.text(`Date Generated: ${format(new Date(), 'MMM d, yyyy')}`, 14, 36);
   doc.text(`Rates: Worker - Rs: ${workerRate}/day, Labourer - Rs: ${labourerRate}/day`, 14, 42);
 
-  const weeklyGroupedRecords = place.records.reduce((acc, record) => {
+  const weeklyGroupedRecords = records.reduce((acc, record) => {
     const recordDate = parseISO(record.date);
     const adjustedDate = recordDate.getDay() === 0 ? subDays(recordDate, 1) : recordDate;
     const weekNumber = getWeek(adjustedDate, { weekStartsOn: 1 });
@@ -127,5 +127,3 @@ export function generatePdf(place: Place) {
 
   doc.save(`History-Report-${place.name.replace(/\s/g, '_')}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
-
-    

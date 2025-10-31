@@ -37,31 +37,35 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { DailyRecord } from '@/lib/types';
-import { useData } from '@/contexts/DataContext';
+import { DailyRecord, Place } from '@/lib/types';
 import { RecordForm } from './RecordForm';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUser, useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
 
 interface HistoryTableProps {
   records: DailyRecord[];
-  placeId: string;
+  place: Place;
 }
 
-export function HistoryTable({ records, placeId }: HistoryTableProps) {
-  const { deleteRecord, getPlaceById } = useData();
+export function HistoryTable({ records, place }: HistoryTableProps) {
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  const place = getPlaceById(placeId);
 
   const handleDelete = async (recordId: string) => {
+    if (!user) return;
     setDeletingRecordId(recordId);
     try {
-        await deleteRecord(placeId, recordId);
+        const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', recordId);
+        deleteDocumentNonBlocking(recordRef);
         toast({ title: 'Success', description: 'Record deleted.' });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete record.' });
@@ -77,7 +81,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
       <DialogHeader>
         <DialogTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DialogTitle>
       </DialogHeader>
-      <RecordForm record={record} placeId={placeId} setModalOpen={(open) => !open && setEditingRecord(null)} />
+      <RecordForm record={record} placeId={place.id} setModalOpen={(open) => !open && setEditingRecord(null)} />
     </>
   );
 
@@ -87,7 +91,7 @@ export function HistoryTable({ records, placeId }: HistoryTableProps) {
         <DrawerTitle>Edit Record for {format(parseISO(record.date), 'MMM d, yyyy')}</DrawerTitle>
       </DrawerHeader>
       <div className="p-4">
-        <RecordForm record={record} placeId={placeId} setModalOpen={(open) => !open && setEditingRecord(null)} />
+        <RecordForm record={record} placeId={place.id} setModalOpen={(open) => !open && setEditingRecord(null)} />
       </div>
     </>
   );

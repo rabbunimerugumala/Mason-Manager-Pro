@@ -3,8 +3,7 @@ import './globals.css';
 import { Header } from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
-import { DataProvider } from '@/contexts/DataContext';
-import { UserProvider } from '@/contexts/UserContext';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'Mason Manager Pro',
@@ -25,15 +24,13 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" crossOrigin="anonymous" />
       </head>
       <body className={cn('font-body antialiased bg-background text-foreground')}>
-        <UserProvider>
-          <DataProvider>
+        <FirebaseClientProvider>
             <div className="relative flex min-h-screen flex-col">
               <Header />
               <main className="flex-1">{children}</main>
             </div>
             <Toaster />
-          </DataProvider>
-        </UserProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

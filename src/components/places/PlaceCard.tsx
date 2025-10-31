@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Edit, Trash2, Loader2 } from 'lucide-react';
 import type { Place } from '@/lib/types';
-import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,23 +13,42 @@ import { PlaceForm } from './PlaceForm';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUser, useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { doc, collection, getDocs, writeBatch } from 'firebase/firestore';
 
 interface PlaceCardProps {
   place: Place;
 }
 
 export function PlaceCard({ place }: PlaceCardProps) {
-  const { deletePlace } = useData();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
 
   const handleDelete = async () => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+        return;
+    }
     setIsDeleting(true);
     try {
-        await deletePlace(place.id);
-        toast({ title: 'Success', description: 'Work site deleted.' });
+        const placeRef = doc(firestore, 'users', user.uid, 'places', place.id);
+        
+        // Also delete subcollections like dailyRecords
+        const recordsRef = collection(placeRef, 'dailyRecords');
+        const recordsSnap = await getDocs(recordsRef);
+        const batch = writeBatch(firestore);
+        recordsSnap.forEach(snap => {
+            batch.delete(snap.ref);
+        });
+        await batch.commit();
+
+        deleteDocumentNonBlocking(placeRef);
+
+        toast({ title: 'Success', description: 'Work site and all its records deleted.' });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete site.' });
     } finally {
@@ -63,7 +81,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
       <CardHeader>
         <CardTitle className="text-xl font-bold truncate">{place.name}</CardTitle>
         <CardDescription>
-            {place.records.length} record(s)
+            Manage your daily records.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
@@ -110,7 +128,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="icon">
-                <Trash2 className="h-4 w-4" />
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 <span className="sr-only">Delete Place</span>
               </Button>
             </AlertDialogTrigger>

@@ -1,14 +1,13 @@
 'use client';
 
-import { useMemo, useCallback, useRef } from 'react';
+import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useData } from '@/contexts/DataContext';
 import { HistoryTable } from '@/components/records/HistoryTable';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileDown, Loader2, Share2 } from 'lucide-react';
 import { generatePdf } from '@/lib/pdf-generator';
-import type { Place } from '@/lib/types';
+import type { Place, DailyRecord } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardFooter } from '@/components/ui/card';
 import { getWeek, getYear, parseISO, format, startOfWeek, add, subDays, Day } from 'date-fns';
@@ -17,6 +16,9 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toJpeg } from 'html-to-image';
 import { useToast } from '@/hooks/use-toast';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
+
 
 function getWeekMonToSat(date: Date) {
     const weekStartsOn: Day = 1; // Monday
@@ -27,20 +29,33 @@ function getWeekMonToSat(date: Date) {
 
 export default function HistoryPage() {
   const params = useParams();
-  const { getPlaceById, loading } = useData();
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
 
   const weeklyReportRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const place = useMemo(() => getPlaceById(placeId), [placeId, getPlaceById]);
+  
+  const placeDocRef = useMemoFirebase(
+    () => (user && placeId ? doc(firestore, 'users', user.uid, 'places', placeId) : null),
+    [user, firestore, placeId]
+  );
+  const { data: place, isLoading: placeLoading } = useDoc<Place>(placeDocRef);
+
+  const recordsCollectionRef = useMemoFirebase(
+    () => (placeDocRef ? collection(placeDocRef, 'dailyRecords') : null),
+    [placeDocRef]
+  );
+  const { data: records, isLoading: recordsLoading } = useCollection<DailyRecord>(recordsCollectionRef);
+
 
   const handleExportPdf = useCallback(() => {
-    if (place) {
-      generatePdf(place);
+    if (place && records) {
+      generatePdf(place, records);
     }
-  }, [place]);
+  }, [place, records]);
 
   const handleShareJpg = useCallback((weekKey: string, weekLabel: string) => {
     const node = weeklyReportRefs.current[weekKey];
@@ -62,11 +77,10 @@ export default function HistoryPage() {
   }, [place?.name, toast]);
 
   const weeklyGroupedRecords = useMemo(() => {
-    if (!place?.records) return {};
+    if (!records) return {};
 
-    return place.records.reduce((acc, record) => {
+    return records.reduce((acc, record) => {
       const recordDate = parseISO(record.date);
-      // Adjust Saturday to be part of the preceding week if week starts on Monday
       const adjustedDate = recordDate.getDay() === 0 ? subDays(recordDate, 1) : recordDate;
 
       const weekNumber = getWeek(adjustedDate, { weekStartsOn: 1 });
@@ -91,8 +105,10 @@ export default function HistoryPage() {
       acc[weekKey].total += dailyTotal;
 
       return acc;
-    }, {} as Record<string, { records: any[], weekLabel: string, total: number }>);
-  }, [place]);
+    }, {} as Record<string, { records: DailyRecord[], weekLabel: string, total: number }>);
+  }, [records, place]);
+  
+  const loading = isUserLoading || placeLoading || recordsLoading;
 
   if (loading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -102,7 +118,7 @@ export default function HistoryPage() {
     return (
       <div className="container mx-auto p-4 md:p-6 text-center">
         <h2 className="text-2xl font-bold">Place not found</h2>
-        <Button asChild variant="link" className="mt-4"><Link href="/">Go back to sites</Link></Button>
+        <Button asChild variant="link" className="mt-4"><Link href="/sites">Go back to sites</Link></Button>
       </div>
     );
   }
@@ -122,13 +138,13 @@ export default function HistoryPage() {
                 <p className="text-muted-foreground truncate">{place.name}</p>
             </div>
         </div>
-        <Button onClick={handleExportPdf} disabled={place.records.length === 0} className={cn('w-full sm:w-auto btn-gradient-primary')}>
+        <Button onClick={handleExportPdf} disabled={!records || records.length === 0} className={cn('w-full sm:w-auto btn-gradient-primary')}>
             <FileDown className="mr-2 h-4 w-4" />
             Export as PDF
         </Button>
       </div>
 
-      {place.records.length === 0 ? (
+      {!records || records.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
             <h2 className="text-xl font-semibold text-muted-foreground">No records found.</h2>
             <p className="text-muted-foreground mt-2">Manage daily attendance to see history here.</p>
@@ -155,11 +171,11 @@ export default function HistoryPage() {
                       {isMobile ? (
                           <div className='p-4 space-y-4'>
                               {weeklyGroupedRecords[weekKey].records.sort((a,b) => b.date.localeCompare(a.date)).map(record => (
-                                  <HistoryCard key={record.id} record={record} placeId={place.id}/>
+                                  <HistoryCard key={record.id} record={record} place={place}/>
                               ))}
                           </div>
                       ) : (
-                        <HistoryTable records={weeklyGroupedRecords[weekKey].records} placeId={place.id} />
+                        <HistoryTable records={weeklyGroupedRecords[weekKey].records} place={place} />
                       )}
                     </AccordionContent>
                   </AccordionItem>
