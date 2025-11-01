@@ -26,7 +26,7 @@ export default function PlaceDashboard() {
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
   const [today, setToday] = useState('');
-  const [workerCount, setWorkerCount]_useState(0);
+  const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<Array<Omit<AdditionalCost, 'id'>>>([{ description: '', amount: 0 }]);
   const [workerRate, setWorkerRate] = useState<number | ''>('');
@@ -77,7 +77,7 @@ export default function PlaceDashboard() {
   }, [todayRecords]);
 
   const handleSaveRecord = () => {
-    if (!place || !user) return;
+    if (!place || !user || !placeDocRef) return;
     setIsSavingRecord(true);
     
     const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
@@ -90,10 +90,10 @@ export default function PlaceDashboard() {
     };
     
     if (todayRecordId) {
-      const recordRef = doc(placeDocRef!, 'dailyRecords', todayRecordId);
+      const recordRef = doc(placeDocRef, 'dailyRecords', todayRecordId);
       updateDocumentNonBlocking(recordRef, recordPayload);
     } else {
-      const recordsCollectionRef = collection(placeDocRef!, 'dailyRecords');
+      const recordsCollectionRef = collection(placeDocRef, 'dailyRecords');
       addDocumentNonBlocking(recordsCollectionRef, {...recordPayload, createdAt: serverTimestamp() });
     }
     
@@ -347,3 +347,4 @@ export default function PlaceDashboard() {
     </div>
   );
 }
+    
