@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Firestore Security Rules for Construction Site Management App.
  *
@@ -51,7 +52,7 @@ service cloud.firestore {
       }
 
       function isValidPhoneNumber(phoneNumber) {
-          return phoneNumber.matches('^\\+?[1-9]\\d{1,14}$');
+          return phoneNumber.matches('^\\d{10}$');
       }
 
       allow create: if isSignedIn()
@@ -92,9 +93,7 @@ service cloud.firestore {
         return request.auth.uid == userId;
       }
 
-      allow create: if isSignedIn()
-                  && isOwner(userId)
-                  && request.resource.data.id == placeId;
+      allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
       allow update: if isSignedIn()
@@ -128,9 +127,7 @@ service cloud.firestore {
         return request.auth.uid == userId;
       }
 
-      allow create: if isSignedIn()
-                  && isOwner(userId)
-                  && request.resource.data.id == dailyRecordId;
+      allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
       allow update: if isSignedIn()
@@ -164,9 +161,7 @@ service cloud.firestore {
         return request.auth.uid == userId;
       }
 
-      allow create: if isSignedIn()
-                  && isOwner(userId)
-                  && request.resource.data.id == paymentRateId;
+      allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
       allow update: if isSignedIn()
@@ -177,3 +172,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
