@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import 'react-phone-input-2/lib/style.css';
 import { signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDocs, collection, query, where, serverTimestamp, getDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 
@@ -58,24 +58,37 @@ export default function AuthPage() {
     
     setIsLoading(true);
     try {
-        const userCredential = await signInAnonymously(auth);
-        const userId = userCredential.user.uid;
-        
-        const userDoc = doc(firestore, 'users', userId);
-        
-        const docSnap = await getDoc(userDoc);
-        
-        if (!docSnap.exists()) {
-             const userData = {
+        const usersRef = collection(firestore, 'users');
+        const q = query(usersRef, where("phoneNumber", "==", phone));
+        const querySnapshot = await getDocs(q);
+
+        let userId;
+
+        if (!querySnapshot.empty) {
+            // User exists, log them in
+            const existingUserDoc = querySnapshot.docs[0];
+            userId = existingUserDoc.id;
+            // We still need to sign in to get a valid auth session for security rules
+            await signInAnonymously(auth);
+        } else {
+            // New user, create them
+            const userCredential = await signInAnonymously(auth);
+            userId = userCredential.user.uid;
+            
+            const userData = {
                 id: userId,
                 name: name,
                 phoneNumber: phone,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
-            setDocumentNonBlocking(userDoc, userData, { merge: false });
+            const userDoc = doc(firestore, 'users', userId);
+            // Use setDoc directly here as we need to await it before redirecting
+            await setDoc(userDoc, userData, { merge: false });
         }
         
+        // At this point, we have a userId, either new or existing.
+        // The onAuthStateChanged listener and hooks will handle the rest.
         toast({ title: 'Success', description: 'Logged in successfully.' });
         router.push('/sites');
 
@@ -114,6 +127,7 @@ export default function AuthPage() {
   }
   
   if (user && userProfile) {
+    // This allows the useEffect to redirect without a flash of the login page.
     return null;
   }
 
