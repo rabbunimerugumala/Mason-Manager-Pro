@@ -9,11 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Save, ArrowLeft, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
-import { format, startOfWeek, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Place, AdditionalCost, DailyRecord } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, where, serverTimestamp } from 'firebase/firestore';
 
 
@@ -26,7 +26,7 @@ export default function PlaceDashboard() {
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
   const [today, setToday] = useState('');
-  const [workerCount, setWorkerCount] = useState(0);
+  const [workerCount, setWorkerCount]_useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<Array<Omit<AdditionalCost, 'id'>>>([{ description: '', amount: 0 }]);
   const [workerRate, setWorkerRate] = useState<number | ''>('');
@@ -69,7 +69,6 @@ export default function PlaceDashboard() {
       setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(c => ({...c, amount: c.amount || 0})) : [{ description: '', amount: 0 }]);
       setTodayRecordId(record.id);
     } else {
-      // Reset if no record for today
       setWorkerCount(0);
       setLabourerCount(0);
       setAdditionalCosts([{ description: '', amount: 0 }]);
@@ -77,52 +76,42 @@ export default function PlaceDashboard() {
     }
   }, [todayRecords]);
 
-  const handleSaveRecord = async () => {
+  const handleSaveRecord = () => {
     if (!place || !user) return;
     setIsSavingRecord(true);
-    try {
-      const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
-      const recordPayload = {
-        date: today,
-        workers: workerCount,
-        labourers: labourerCount,
-        additionalCosts: validAdditionalCosts,
-        updatedAt: serverTimestamp(),
-      };
-      
-      if (todayRecordId) {
-        // Update existing record
-        const recordRef = doc(placeDocRef!, 'dailyRecords', todayRecordId);
-        updateDocumentNonBlocking(recordRef, recordPayload);
-      } else {
-        // Add new record
-        const recordsCollectionRef = collection(placeDocRef!, 'dailyRecords');
-        addDocumentNonBlocking(recordsCollectionRef, {...recordPayload, createdAt: serverTimestamp() });
-      }
-      
-      toast({ title: 'Success', description: "Record saved." });
-    } catch(error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message || "Could not save record."});
-    } finally {
-        setIsSavingRecord(false);
+    
+    const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
+    const recordPayload = {
+      date: today,
+      workers: workerCount,
+      labourers: labourerCount,
+      additionalCosts: validAdditionalCosts,
+      updatedAt: serverTimestamp(),
+    };
+    
+    if (todayRecordId) {
+      const recordRef = doc(placeDocRef!, 'dailyRecords', todayRecordId);
+      updateDocumentNonBlocking(recordRef, recordPayload);
+    } else {
+      const recordsCollectionRef = collection(placeDocRef!, 'dailyRecords');
+      addDocumentNonBlocking(recordsCollectionRef, {...recordPayload, createdAt: serverTimestamp() });
     }
+    
+    toast({ title: 'Success', description: "Record saved." });
+    setIsSavingRecord(false);
   };
   
-  const handleSaveRates = async () => {
+  const handleSaveRates = () => {
     if (!placeDocRef) return;
     setIsSavingRates(true);
-    try {
-        updateDocumentNonBlocking(placeDocRef, { 
-            workerRate: Number(workerRate) || 0, 
-            labourerRate: Number(labourerRate) || 0,
-            updatedAt: serverTimestamp() 
-        });
-        toast({ title: 'Success', description: 'Payment rates updated.' });
-    } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message || "Could not save rates."});
-    } finally {
-        setIsSavingRates(false);
-    }
+
+    updateDocumentNonBlocking(placeDocRef, { 
+        workerRate: Number(workerRate) || 0, 
+        labourerRate: Number(labourerRate) || 0,
+        updatedAt: serverTimestamp() 
+    });
+    toast({ title: 'Success', description: 'Payment rates updated.' });
+    setIsSavingRates(false);
   };
 
   const handleAdditionalCostChange = (index: number, field: 'description' | 'amount', value: string | number) => {
@@ -157,7 +146,6 @@ export default function PlaceDashboard() {
     return workersPayment + labourersPayment + otherCosts;
   }, [place, workerCount, labourerCount, additionalCosts]);
 
-  // For weekly payment, we need to fetch all records for the week.
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   
   const weeklyRecordsQuery = useMemoFirebase(() => {
@@ -165,7 +153,7 @@ export default function PlaceDashboard() {
       return query(collection(placeDocRef, 'dailyRecords'), where('date', '>=', weekStart));
   }, [placeDocRef, weekStart]);
 
-  const {data: thisWeekRecords, isLoading: weekRecordsLoading} = useCollection<DailyRecord>(weeklyRecordsQuery);
+  const {data: thisWeekRecords } = useCollection<DailyRecord>(weeklyRecordsQuery);
   
   const thisWeekPayment = useMemo(() => {
     if (!place || !thisWeekRecords) return 0;

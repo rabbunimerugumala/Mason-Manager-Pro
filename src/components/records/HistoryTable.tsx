@@ -60,18 +60,13 @@ export function HistoryTable({ records, place }: HistoryTableProps) {
   const isMobile = useIsMobile();
 
 
-  const handleDelete = async (recordId: string) => {
+  const handleDelete = (recordId: string) => {
     if (!user) return;
     setDeletingRecordId(recordId);
-    try {
-        const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', recordId);
-        deleteDocumentNonBlocking(recordRef);
-        toast({ title: 'Success', description: 'Record deleted.' });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete record.' });
-    } finally {
-        setDeletingRecordId(null);
-    }
+    const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', recordId);
+    deleteDocumentNonBlocking(recordRef);
+    toast({ title: 'Success', description: 'Record deleted.' });
+    setDeletingRecordId(null);
   };
   
   const sortedRecords = [...records].sort((a, b) => b.date.localeCompare(a.date));

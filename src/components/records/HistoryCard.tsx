@@ -35,18 +35,13 @@ export function HistoryCard({ record, place }: HistoryCardProps) {
     const additionalCostsTotal = (record.additionalCosts || []).reduce((acc, cost) => acc + (cost.amount || 0), 0);
     const total = workerCost + labourerCost + additionalCostsTotal;
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!user) return;
         setIsDeleting(true);
-        try {
-            const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', record.id);
-            deleteDocumentNonBlocking(recordRef);
-            toast({ title: 'Success', description: 'Record deleted.' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete record.' });
-        } finally {
-            setIsDeleting(false);
-        }
+        const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', record.id);
+        deleteDocumentNonBlocking(recordRef);
+        toast({ title: 'Success', description: 'Record deleted.' });
+        setIsDeleting(false);
     };
 
     const EditRecordDialog = () => (

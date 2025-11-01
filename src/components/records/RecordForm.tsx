@@ -55,17 +55,14 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
   });
 
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) return;
-    try {
-      const validCosts = values.additionalCosts?.filter(c => c.description && c.amount).map(c => ({...c, amount: Number(c.amount)})) || [];
-      const recordRef = doc(firestore, 'users', user.uid, 'places', placeId, 'dailyRecords', record.id);
-      updateDocumentNonBlocking(recordRef, { ...values, additionalCosts: validCosts, updatedAt: serverTimestamp() });
-      toast({ title: 'Success', description: 'Record updated.' });
-      setModalOpen(false);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message || "Could not update record." });
-    }
+    
+    const validCosts = values.additionalCosts?.filter(c => c.description && c.amount).map(c => ({...c, amount: Number(c.amount)})) || [];
+    const recordRef = doc(firestore, 'users', user.uid, 'places', placeId, 'dailyRecords', record.id);
+    updateDocumentNonBlocking(recordRef, { ...values, additionalCosts: validCosts, updatedAt: serverTimestamp() });
+    toast({ title: 'Success', description: 'Record updated.' });
+    setModalOpen(false);
   }
 
   return (

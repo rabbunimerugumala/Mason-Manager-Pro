@@ -38,7 +38,7 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) {
       toast({ variant: 'destructive', title: 'Error', description: "You must be logged in to save a site." });
       return;
@@ -48,21 +48,18 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
         workerRate: Number(values.workerRate) || 0,
         labourerRate: Number(values.labourerRate) || 0,
     }
-    try {
-      if (place) {
-        const placeRef = doc(firestore, 'users', user.uid, 'places', place.id);
-        updateDocumentNonBlocking(placeRef, { ...data, updatedAt: serverTimestamp() });
-        toast({ title: 'Success', description: 'Work site updated.' });
-      } else {
-        const placesCollection = collection(firestore, 'users', user.uid, 'places');
-        addDocumentNonBlocking(placesCollection, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-        toast({ title: 'Success', description: 'New work site created.' });
-      }
-      setModalOpen(false);
-      form.reset();
-    } catch(error: any) {
-       toast({ variant: 'destructive', title: 'Error', description: error.message || "Could not save the site." });
+    
+    if (place) {
+      const placeRef = doc(firestore, 'users', user.uid, 'places', place.id);
+      updateDocumentNonBlocking(placeRef, { ...data, updatedAt: serverTimestamp() });
+      toast({ title: 'Success', description: 'Work site updated.' });
+    } else {
+      const placesCollection = collection(firestore, 'users', user.uid, 'places');
+      addDocumentNonBlocking(placesCollection, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      toast({ title: 'Success', description: 'New work site created.' });
     }
+    setModalOpen(false);
+    form.reset();
   }
 
   return (

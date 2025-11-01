@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, deleteDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, collection, getDocs, writeBatch } from 'firebase/firestore';
 
 
 export default function SettingsPage() {
@@ -53,16 +53,13 @@ export default function SettingsPage() {
         const batch = writeBatch(firestore);
 
         for (const placeDoc of placesSnap.docs) {
-            // Delete subcollections of each place
             const recordsRef = collection(placeDoc.ref, 'dailyRecords');
             const recordsSnap = await getDocs(recordsRef);
             recordsSnap.forEach(snap => batch.delete(snap.ref));
             
-            // Delete the place itself
             batch.delete(placeDoc.ref);
         }
         
-        // Delete the user document
         batch.delete(doc(firestore, 'users', user.uid));
 
         await batch.commit();
@@ -114,7 +111,7 @@ export default function SettingsPage() {
             <div className="mb-4 sm:mb-0 sm:mr-4">
               <h3 className="font-semibold">Clear All My Data</h3>
               <p className="text-sm text-muted-foreground">
-                This will permanently delete all your work sites and records from this device.
+                This will permanently delete all your work sites and records.
               </p>
             </div>
             <AlertDialog>

@@ -10,11 +10,10 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import 'react-phone-input-2/lib/style.css';
-import PhoneInput from 'react-phone-input-2';
 import { signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 
@@ -64,17 +63,17 @@ export default function AuthPage() {
         
         const userDoc = doc(firestore, 'users', userId);
         
-        // Check if a user document already exists, perhaps from a previous session
         const docSnap = await getDoc(userDoc);
         
         if (!docSnap.exists()) {
-             await setDoc(userDoc, {
+             const userData = {
                 id: userId,
                 name: name,
                 phoneNumber: phone,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            });
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+            setDocumentNonBlocking(userDoc, userData, { merge: false });
         }
         
         toast({ title: 'Success', description: 'Logged in successfully.' });
@@ -114,8 +113,6 @@ export default function AuthPage() {
     );
   }
   
-  // If user is logged in and has a profile, they are redirected by the effect.
-  // If they are logged in but have no profile yet (e.g., first login), show login form to create it.
   if (user && userProfile) {
     return null;
   }
