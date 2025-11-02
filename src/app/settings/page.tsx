@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, collection, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 
 
 export default function SettingsPage() {
@@ -53,22 +53,32 @@ export default function SettingsPage() {
         const batch = writeBatch(firestore);
 
         for (const placeDoc of placesSnap.docs) {
+            // Delete subcollections for each place
             const recordsRef = collection(placeDoc.ref, 'dailyRecords');
             const recordsSnap = await getDocs(recordsRef);
             recordsSnap.forEach(snap => batch.delete(snap.ref));
             
+            // Delete the place itself
             batch.delete(placeDoc.ref);
         }
         
-        batch.delete(doc(firestore, 'users', user.uid));
-
         await batch.commit();
+        
+        // After deleting subcollections, delete the user document itself.
+        await deleteDoc(doc(firestore, 'users', user.uid));
+
 
         toast({
           title: 'Data Cleared',
           description: 'All your site and record data has been deleted.',
         });
+        
+        // Log the user out and redirect to home page
+        router.push('/');
+
+
     } catch (error: any) {
+        console.error("Error clearing data:", error);
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not clear data.' });
     } finally {
         setIsDeleting(false);
@@ -103,7 +113,7 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-destructive">Danger Zone</CardTitle>
           <CardDescription>
-            These actions are permanent and cannot be undone.
+            This action is permanent and cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,7 +121,7 @@ export default function SettingsPage() {
             <div className="mb-4 sm:mb-0 sm:mr-4">
               <h3 className="font-semibold">Clear All My Data</h3>
               <p className="text-sm text-muted-foreground">
-                This will permanently delete all your work sites and records.
+                This will permanently delete your account, all work sites, and their associated records.
               </p>
             </div>
             <AlertDialog>
@@ -126,7 +136,7 @@ export default function SettingsPage() {
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete all
-                    of your data, including all work sites and their associated
+                    of your data, including your account, all work sites, and their associated
                     records.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
