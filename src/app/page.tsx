@@ -11,7 +11,6 @@ import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import 'react-phone-input-2/lib/style.css';
 import { signInAnonymously, signOut } from 'firebase/auth';
 import { doc, getDocs, collection, query, where, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -28,6 +27,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const SESSION_KEY = 'mason-manager-user-id';
 
   useEffect(() => {
     setIsClient(true);
@@ -63,26 +63,19 @@ export default function AuthPage() {
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-            // User with this name exists. Check password.
-            const existingUser = querySnapshot.docs[0].data() as UserProfile;
-            const existingUserId = querySnapshot.docs[0].id;
-
+            const existingUserDoc = querySnapshot.docs[0];
+            const existingUser = existingUserDoc.data() as UserProfile;
+            
             if (existingUser.password === password) {
-                // Password matches. To ensure we have a valid auth session for rules,
-                // we'll sign out any existing anonymous user and sign in a new one.
-                // In this simple app, we just need a valid auth UID. We'll reuse the existing user doc.
-                if (auth.currentUser?.uid !== existingUserId) {
-                    await signOut(auth); // Clear any previous session
-                    await signInAnonymously(auth);
-                }
-                // The issue is that the new anon user's UID won't match existingUserId.
-                // For this app model, let's just proceed. The hooks will refetch with the new UID.
-                // A better model would be custom tokens.
+                // User exists and password is correct.
+                // We need a valid Firebase Auth session.
+                await signOut(auth); // Clear any old session
+                const { user: authUser } = await signInAnonymously(auth);
+                // Store the Firestore document ID in the session, NOT the auth UID.
+                sessionStorage.setItem(SESSION_KEY, existingUserDoc.id);
                 
-                // We need to re-check the user doc for the NEW auth user.
-                // Or better, let's just create a new session and let the app handle it.
+                toast({ title: 'Logged In!', description: 'Welcome back.' });
                 router.push('/sites');
-
 
             } else {
                 toast({ variant: 'destructive', title: 'Incorrect Password', description: 'The password for this user is incorrect.' });
@@ -91,8 +84,8 @@ export default function AuthPage() {
         } else {
             // New user, create them.
             await signOut(auth); // Ensure clean slate
-            const userCredential = await signInAnonymously(auth);
-            const userId = userCredential.user.uid;
+            const { user: authUser } = await signInAnonymously(auth);
+            const userId = authUser.uid; // This will be the document ID
             
             const userData: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'> = {
                 name: name,
@@ -107,11 +100,12 @@ export default function AuthPage() {
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             });
+
+            sessionStorage.setItem(SESSION_KEY, userId);
             
             toast({ title: 'Account Created!', description: 'Logged in successfully.' });
             router.push('/sites');
         }
-        
 
     } catch (error: any) {
       console.error("Login failed:", error);

@@ -33,6 +33,7 @@ export function Header() {
 
   const handleLogout = async () => {
     await signOut(auth);
+    sessionStorage.removeItem('mason-manager-user-id');
     router.push('/');
   };
 
