@@ -54,7 +54,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
                     <UserIcon className="h-5 w-5 text-muted-foreground" />
-                    <span className='font-semibold'>{userProfile.name || userProfile.phoneNumber}</span>
+                    <span className='font-semibold'>{userProfile.name}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">

@@ -51,20 +51,13 @@ service cloud.firestore {
         return request.auth.uid == userId;
       }
 
-      function isValidPhoneNumber(phoneNumber) {
-          return phoneNumber.matches('^\\d{10}$');
-      }
-
-      allow create: if isSignedIn()
-                  && isOwner(userId)
-                  && isValidPhoneNumber(request.resource.data.phoneNumber);
+      allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn();
       allow update: if isSignedIn()
                    && isOwner(userId)
                    && resource != null
-                   && request.resource.data.id == resource.data.id
-                   && isValidPhoneNumber(request.resource.data.phoneNumber);
+                   && request.resource.data.id == resource.data.id;
       allow delete: if isSignedIn() && isOwner(userId) && resource != null;
     }
 

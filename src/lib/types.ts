@@ -29,7 +29,7 @@ export interface Place {
 export interface UserProfile {
     id: string;
     name: string;
-    phoneNumber: string;
+    password?: string;
     createdAt: string;
     updatedAt: string;
 }
