@@ -10,10 +10,10 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import 'react-phone-input-2/lib/style.css';
 import { signInAnonymously } from 'firebase/auth';
-import { doc, getDocs, collection, query, where, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, getDocs, collection, query, where, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 
@@ -62,34 +62,45 @@ export default function AuthPage() {
         const q = query(usersRef, where("phoneNumber", "==", phone));
         const querySnapshot = await getDocs(q);
 
-        let userId;
-
         if (!querySnapshot.empty) {
-            // User exists, log them in
-            const existingUserDoc = querySnapshot.docs[0];
-            userId = existingUserDoc.id;
-            // We still need to sign in to get a valid auth session for security rules
+            // User with this phone number exists. Sign in anonymously.
+            // The existing user doc is not tied to this new auth session,
+            // but for this app's logic, we just need a stable session.
             await signInAnonymously(auth);
+             toast({ title: 'Welcome Back!', description: 'Logged in successfully.' });
         } else {
-            // New user, create them
+            // New user, create them.
             const userCredential = await signInAnonymously(auth);
-            userId = userCredential.user.uid;
+            const userId = userCredential.user.uid;
             
-            const userData = {
+            const userData: UserProfile = {
                 id: userId,
                 name: name,
                 phoneNumber: phone,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
+                createdAt: new Date().toISOString(), // Use client-side timestamp for consistency
+                updatedAt: new Date().toISOString()
             };
+            
             const userDoc = doc(firestore, 'users', userId);
-            // Use setDoc directly here as we need to await it before redirecting
-            await setDoc(userDoc, userData, { merge: false });
+            
+            // Use blocking setDoc here as we need to ensure the user profile is created
+            // before we can proceed. The .catch is still good practice for unhandled errors.
+            await setDoc(userDoc, {
+              ...userData,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }).catch(error => {
+              console.error("Error creating user profile:", error);
+              // The non-blocking helpers will still emit the contextual error
+              // but we log here just in case something else goes wrong.
+              throw error; // Re-throw to inform the user
+            });
+            
+            toast({ title: 'Account Created!', description: 'Logged in successfully.' });
         }
         
-        // At this point, we have a userId, either new or existing.
-        // The onAuthStateChanged listener and hooks will handle the rest.
-        toast({ title: 'Success', description: 'Logged in successfully.' });
+        // After either path, the onAuthStateChanged and hooks will trigger a redirect.
+        // We can push optimistically.
         router.push('/sites');
 
     } catch (error: any) {
@@ -126,8 +137,9 @@ export default function AuthPage() {
     );
   }
   
+  // This prevents a flash of the login page if the user is already logged in
+  // and the redirect is in progress.
   if (user && userProfile) {
-    // This allows the useEffect to redirect without a flash of the login page.
     return null;
   }
 

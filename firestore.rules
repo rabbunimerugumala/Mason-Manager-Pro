@@ -57,10 +57,9 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
                   && isOwner(userId)
-                  && request.resource.data.id == userId
                   && isValidPhoneNumber(request.resource.data.phoneNumber);
       allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
+      allow list: if isSignedIn();
       allow update: if isSignedIn()
                    && isOwner(userId)
                    && resource != null
@@ -172,5 +171,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
