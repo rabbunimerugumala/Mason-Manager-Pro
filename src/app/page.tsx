@@ -10,9 +10,9 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, getDocumentsNonBlocking, FirestorePermissionError } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
-import { doc, getDocs, collection, query, where, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 
@@ -57,45 +57,33 @@ export default function AuthPage() {
     }
     
     setIsLoading(true);
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, where("name", "==", name));
+    
     try {
-        const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, where("name", "==", name));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-            // User exists, try to log in
             const existingUserDoc = querySnapshot.docs[0];
             const existingUser = existingUserDoc.data() as UserProfile;
             
             if (existingUser.password === password) {
-                // Password matches
-                if(auth.currentUser) {
+                if (auth.currentUser) {
                   await signOut(auth);
                 }
                 const { user: authUser } = await signInAnonymously(auth);
-
-                // IMPORTANT: Use the existing user's ID for the session
                 sessionStorage.setItem(SESSION_KEY, existingUserDoc.id);
-                
-                // Manually update the user in the provider state
-                // This is a workaround to make sure the UI updates immediately
-                // The provider will re-sync on next load anyway
                 (auth as any).updateCurrentUser(authUser);
-
-
                 toast({ title: 'Logged In!', description: 'Welcome back.' });
                 router.push('/sites');
-
             } else {
                 toast({ variant: 'destructive', title: 'Incorrect Password', description: 'The password for this user is incorrect.' });
+                setIsLoading(false);
             }
-
         } else {
-            // User does not exist, create new account
-            if(auth.currentUser) {
+            if (auth.currentUser) {
               await signOut(auth);
             }
-            // CRITICAL: await the sign-in to ensure auth object is ready
             const { user: authUser } = await signInAnonymously(auth);
             const userId = authUser.uid; 
             
@@ -105,26 +93,25 @@ export default function AuthPage() {
             };
             
             const newUserDocRef = doc(firestore, 'users', userId);
-            
-            // Now set the document, auth is guaranteed to be ready
-            await setDoc(newUserDocRef, {
+            const data = {
               ...userData,
               id: userId,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
-            });
+            };
 
+            setDocumentNonBlocking(newUserDocRef, data, {});
             sessionStorage.setItem(SESSION_KEY, userId);
-            
             toast({ title: 'Account Created!', description: 'Logged in successfully.' });
             router.push('/sites');
         }
-
-    } catch (error: any) {
-      console.error("Login/Signup failed:", error);
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'An unexpected error occurred.' });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+        if (error instanceof FirestorePermissionError) {
+          // Error is already emitted by the non-blocking function
+        } else {
+          toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || 'An unexpected error occurred.' });
+        }
+        setIsLoading(false);
     }
   };
   

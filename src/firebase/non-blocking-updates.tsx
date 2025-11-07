@@ -5,8 +5,10 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
   CollectionReference,
   DocumentReference,
+  Query,
   SetOptions,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -26,6 +28,8 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
         requestResourceData: data,
       })
     )
+    // Re-throw the original error to be caught by the calling function's catch block
+    throw error;
   })
 }
 
@@ -84,5 +88,22 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
           operation: 'delete',
         })
       )
+    });
+}
+
+/**
+ * Initiates a getDocs operation for a query.
+ * Throws a contextual error on permission failure.
+ */
+export function getDocumentsNonBlocking(query: Query) {
+    return getDocs(query).catch(error => {
+        const path = (query as any)._query.path.toString();
+        const permissionError = new FirestorePermissionError({
+            path: path,
+            operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        // Re-throw the error so the caller knows the operation failed.
+        throw permissionError;
     });
 }
