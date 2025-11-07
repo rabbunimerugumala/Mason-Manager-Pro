@@ -203,19 +203,19 @@ export default function PlaceDashboard() {
 
   return (
     <div className="container mx-auto p-4 md:p-6">
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+        <div className="flex items-center w-full">
             <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
                 <Link href="/sites"><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
-            <div>
+            <div className="flex-grow">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground truncate">{place.name}</h1>
               <p className="text-muted-foreground">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
             </div>
         </div>
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant={"outline"}>
+                <Button variant={"outline"} className="w-full sm:w-auto flex-shrink-0">
                     <CalendarDays className="mr-2 h-4 w-4" />
                     Change Date
                 </Button>
