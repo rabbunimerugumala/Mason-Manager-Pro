@@ -54,10 +54,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn();
-      allow update: if isSignedIn()
-                   && isOwner(userId)
-                   && resource != null
-                   && request.resource.data.id == resource.data.id;
+      allow update: if isSignedIn() && isOwner(userId);
       allow delete: if isSignedIn() && isOwner(userId) && resource != null;
     }
 
@@ -88,10 +85,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn()
-                   && isOwner(userId)
-                   && resource != null
-                   && request.resource.data.id == resource.data.id;
+      allow update: if isSignedIn() && isOwner(userId);
       allow delete: if isSignedIn() && isOwner(userId) && resource != null;
     }
 
@@ -122,10 +116,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn()
-                   && isOwner(userId)
-                   && resource != null
-                   && request.resource.data.id == resource.data.id;
+      allow update: if isSignedIn() && isOwner(userId);
       allow delete: if isSignedIn() && isOwner(userId) && resource != null;
     }
 
@@ -156,10 +147,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn()
-                   && isOwner(userId)
-                   && resource != null
-                   && request.resource.data.id == resource.data.id;
+      allow update: if isSignedIn() && isOwner(userId);
       allow delete: if isSignedIn() && isOwner(userId) && resource != null;
     }
   }
