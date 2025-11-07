@@ -1,71 +1,32 @@
 
-/**
- * @fileoverview Firestore Security Rules for Construction Site Management App.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user has full control over their data tree.
- *
- * Data Structure:
- * All data is nested under /users/{userId}, ensuring complete isolation between users.  Each user owns places, daily records, and payment rates.
- *  - /users/{userId}
- *  - /users/{userId}/places/{placeId}
- *  - /users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId}
- *  - /users/{userId}/places/{placeId}/paymentRates/{paymentRateId}
- *
- * Key Security Decisions:
- * - Users can only access their own data. No cross-user data access is allowed through security rules.
- * - All write operations require an authenticated user who is the owner of the data path.
- *
- * Denormalization for Authorization:
- * The data structure uses path-based security. User and place IDs in the path are used for authorization, which is fast and efficient.
- *
- * Structural Segregation:
- * User-specific data is stored under the /users/{userId} path, ensuring private data is not accidentally exposed.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // A user must be signed in to perform any action.
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // A user can only access documents under their own user ID.
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    /**
-     * @description Manages user profiles. Users can create their own profile and read/write to it. Allows listing by name for login.
-     * @path /users/{userId}
-     */
+    // Rule for the user's own profile document.
+    // They can create, read, update, and delete their own profile.
+    // Listing users is allowed for login purposes.
     match /users/{userId} {
-      allow create: if isSignedIn() && isOwner(userId);
-      allow get, update, delete: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn(); // Required for the login-by-name functionality.
-    }
-
-    /**
-     * @description Manages construction site locations managed by a specific user.
-     * @path /users/{userId}/places/{placeId}
-     */
-    match /users/{userId}/places/{placeId} {
       allow read, write: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn();
     }
 
-    /**
-     * @description Manages daily records of worker counts for a specific place, scoped to a user.
-     * @path /users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId}
-     */
-    match /users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId} {
+    // Rules for all subcollections under a user's document.
+    // This single rule applies to places, dailyRecords, paymentRates, etc.
+    // It ensures that only the owner can access their own nested data.
+    match /users/{userId}/{document=**} {
       allow read, write: if isSignedIn() && isOwner(userId);
-    }
-
-    /**
-     * @description Manages payment rates for workers and labourers at a specific place, scoped to a user.
-     * @path /users/{userId}/places/{placeId}/paymentRates/{paymentRateId}
-     */
-    match /users/{userId}/places/{placeId}/paymentRates/{paymentRateId} {
-       allow read, write: if isSignedIn() && isOwner(userId);
     }
   }
 }
