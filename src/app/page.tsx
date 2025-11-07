@@ -63,14 +63,26 @@ export default function AuthPage() {
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
+            // User exists, try to log in
             const existingUserDoc = querySnapshot.docs[0];
             const existingUser = existingUserDoc.data() as UserProfile;
             
             if (existingUser.password === password) {
-                await signOut(auth);
-                await signInAnonymously(auth);
+                // Password matches
+                if(auth.currentUser) {
+                  await signOut(auth);
+                }
+                const { user: authUser } = await signInAnonymously(auth);
+
+                // IMPORTANT: Use the existing user's ID for the session
                 sessionStorage.setItem(SESSION_KEY, existingUserDoc.id);
                 
+                // Manually update the user in the provider state
+                // This is a workaround to make sure the UI updates immediately
+                // The provider will re-sync on next load anyway
+                (auth as any).updateCurrentUser(authUser);
+
+
                 toast({ title: 'Logged In!', description: 'Welcome back.' });
                 router.push('/sites');
 
@@ -79,7 +91,11 @@ export default function AuthPage() {
             }
 
         } else {
-            await signOut(auth);
+            // User does not exist, create new account
+            if(auth.currentUser) {
+              await signOut(auth);
+            }
+            // CRITICAL: await the sign-in to ensure auth object is ready
             const { user: authUser } = await signInAnonymously(auth);
             const userId = authUser.uid; 
             
@@ -90,6 +106,7 @@ export default function AuthPage() {
             
             const newUserDocRef = doc(firestore, 'users', userId);
             
+            // Now set the document, auth is guaranteed to be ready
             await setDoc(newUserDocRef, {
               ...userData,
               id: userId,
@@ -104,8 +121,8 @@ export default function AuthPage() {
         }
 
     } catch (error: any) {
-      console.error("Login failed:", error);
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not log in.' });
+      console.error("Login/Signup failed:", error);
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'An unexpected error occurred.' });
     } finally {
       setIsLoading(false);
     }
