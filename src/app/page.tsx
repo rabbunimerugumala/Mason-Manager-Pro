@@ -70,7 +70,7 @@ export default function AuthPage() {
                 // User exists and password is correct.
                 // We need a valid Firebase Auth session.
                 await signOut(auth); // Clear any old session
-                const { user: authUser } = await signInAnonymously(auth);
+                await signInAnonymously(auth);
                 // Store the Firestore document ID in the session, NOT the auth UID.
                 sessionStorage.setItem(SESSION_KEY, existingUserDoc.id);
                 
@@ -94,9 +94,10 @@ export default function AuthPage() {
             
             const userDoc = doc(firestore, 'users', userId);
             
+            // This needs to be awaited to ensure auth state is settled before rules are checked
             await setDoc(userDoc, {
               ...userData,
-              id: userId,
+              id: userId, // Explicitly set ID for rules if needed, and for consistency
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             });
