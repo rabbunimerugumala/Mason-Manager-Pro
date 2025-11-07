@@ -8,7 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Save, ArrowLeft, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarIcon, Save, ArrowLeft, Loader2, Minus, Plus, Trash2, CalendarDays } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
 import { format, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Place, AdditionalCost, DailyRecord } from '@/lib/types';
@@ -25,7 +27,7 @@ export default function PlaceDashboard() {
   
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
-  const [today, setToday] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [workerCount, setWorkerCount] = useState(0);
   const [labourerCount, setLabourerCount] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<Array<Omit<AdditionalCost, 'id'>>>([{ description: '', amount: 0 }]);
@@ -41,15 +43,12 @@ export default function PlaceDashboard() {
   );
   const { data: place, isLoading: placeLoading } = useDoc<Place>(placeDocRef);
 
-  useEffect(() => {
-    const formattedDate = format(new Date(), 'yyyy-MM-dd');
-    setToday(formattedDate);
-  }, []);
+  const formattedSelectedDate = format(selectedDate, 'yyyy-MM-dd');
 
   const todayRecordQuery = useMemoFirebase(() => {
-    if (!placeDocRef || !today) return null;
-    return query(collection(placeDocRef, 'dailyRecords'), where('date', '==', today));
-  }, [placeDocRef, today]);
+    if (!placeDocRef) return null;
+    return query(collection(placeDocRef, 'dailyRecords'), where('date', '==', formattedSelectedDate));
+  }, [placeDocRef, formattedSelectedDate]);
 
   const { data: todayRecords, isLoading: todayRecordLoading } = useCollection<DailyRecord>(todayRecordQuery);
 
@@ -69,12 +68,13 @@ export default function PlaceDashboard() {
       setAdditionalCosts(savedCosts.length > 0 ? savedCosts.map(c => ({...c, amount: c.amount || 0})) : [{ description: '', amount: 0 }]);
       setTodayRecordId(record.id);
     } else {
+      // Reset form when date changes and no record is found
       setWorkerCount(0);
       setLabourerCount(0);
       setAdditionalCosts([{ description: '', amount: 0 }]);
       setTodayRecordId(null);
     }
-  }, [todayRecords]);
+  }, [todayRecords, selectedDate]); // Rerun when selectedDate changes
 
   const handleSaveRecord = () => {
     if (!place || !user || !placeDocRef) return;
@@ -82,7 +82,7 @@ export default function PlaceDashboard() {
     
     const validAdditionalCosts = additionalCosts.filter(c => c.description && c.amount > 0);
     const recordPayload = {
-      date: today,
+      date: formattedSelectedDate,
       workers: workerCount,
       labourers: labourerCount,
       additionalCosts: validAdditionalCosts,
@@ -168,7 +168,7 @@ export default function PlaceDashboard() {
 
   const loading = isUserLoading || placeLoading || todayRecordLoading;
 
-  if (loading) {
+  if (loading && !place) { // Only show full page loader on initial load
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -203,22 +203,41 @@ export default function PlaceDashboard() {
 
   return (
     <div className="container mx-auto p-4 md:p-6">
-      <div className="flex items-center mb-6">
-        <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
-            <Link href="/sites"><ArrowLeft className="h-4 w-4" /></Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground truncate">{place.name}</h1>
-          <p className="text-muted-foreground">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center">
+            <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
+                <Link href="/sites"><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground truncate">{place.name}</h1>
+              <p className="text-muted-foreground">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
+            </div>
         </div>
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant={"outline"}>
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    Change Date
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+                <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && setSelectedDate(date)}
+                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                    initialFocus
+                />
+            </PopoverContent>
+        </Popover>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Today's Log</CardTitle>
-              <CardDescription>Log attendance and other costs for today.</CardDescription>
+              <CardTitle>Log for {format(selectedDate, 'MMM d')}</CardTitle>
+              <CardDescription>Log attendance and other costs for the selected date.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -279,9 +298,9 @@ export default function PlaceDashboard() {
                   </Button>
                 </div>
               
-              <Button onClick={handleSaveRecord} disabled={isSavingRecord} className={cn("w-full btn-gradient-primary")}>
-                {isSavingRecord ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
-                {todayRecordId ? 'Update Today\'s Record' : 'Save Today\'s Record'}
+              <Button onClick={handleSaveRecord} disabled={isSavingRecord || todayRecordLoading} className={cn("w-full btn-gradient-primary")}>
+                {isSavingRecord || todayRecordLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-5 w-5" />}
+                {todayRecordId ? 'Update Record' : 'Save Record'}
               </Button>
             </CardContent>
           </Card>
@@ -314,11 +333,11 @@ export default function PlaceDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Payment Calculation</CardTitle>
-              <CardDescription>Live cost estimation based on today's log.</CardDescription>
+              <CardDescription>Live cost estimation based on selected day's log.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <div>
-                <p className="text-muted-foreground">Today's Total Payment</p>
+                <p className="text-muted-foreground">Selected Day's Total</p>
                 <p className="text-3xl font-bold text-primary">Rs: {todayPayment.toFixed(2)}</p>
               </div>
               <Separator />
@@ -336,7 +355,7 @@ export default function PlaceDashboard() {
             <CardContent>
                  <Button asChild variant="outline" className="w-full">
                     <Link href={`/places/${place.id}/history`}>
-                        <Calendar className="mr-2 h-5 w-5" />
+                        <CalendarIcon className="mr-2 h-5 w-5" />
                         View Full History
                     </Link>
                 </Button>
