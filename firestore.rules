@@ -14,11 +14,10 @@
  *
  * Key Security Decisions:
  * - Users can only access their own data. No cross-user data access is allowed through security rules.
- * - Data consistency between paths and document IDs is enforced on create and update operations.
- * - All write operations require an authenticated user.
+ * - All write operations require an authenticated user who is the owner of the data path.
  *
  * Denormalization for Authorization:
- * The data structure denormalizes user and place IDs into subcollection documents. This enables fast, simple rules without costly `get()` operations.
+ * The data structure uses path-based security. User and place IDs in the path are used for authorization, which is fast and efficient.
  *
  * Structural Segregation:
  * User-specific data is stored under the /users/{userId} path, ensuring private data is not accidentally exposed.
@@ -36,13 +35,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages user profiles, ensuring each user can only access their own profile.
+     * @description Manages user profiles. Users can create their own profile and read/write to it. Allows listing by name for login.
      * @path /users/{userId}
      */
     match /users/{userId} {
       allow create: if isSignedIn() && isOwner(userId);
-      allow get, list: if isSignedIn();
-      allow update, delete: if isSignedIn() && isOwner(userId);
+      allow get, update, delete: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn(); // Required for the login-by-name functionality.
     }
 
     /**
@@ -50,9 +49,7 @@ service cloud.firestore {
      * @path /users/{userId}/places/{placeId}
      */
     match /users/{userId}/places/{placeId} {
-      allow create: if isSignedIn() && isOwner(userId);
-      allow get, list, delete: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId) && get(/databases/$(database)/documents/users/$(userId)) != null;
+      allow read, write: if isSignedIn() && isOwner(userId);
     }
 
     /**
@@ -60,9 +57,7 @@ service cloud.firestore {
      * @path /users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId}
      */
     match /users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId} {
-      allow create: if isSignedIn() && isOwner(userId);
-      allow get, list, delete: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId) && get(/databases/$(database)/documents/users/$(userId)/places/$(placeId)) != null;
+      allow read, write: if isSignedIn() && isOwner(userId);
     }
 
     /**
@@ -70,9 +65,7 @@ service cloud.firestore {
      * @path /users/{userId}/places/{placeId}/paymentRates/{paymentRateId}
      */
     match /users/{userId}/places/{placeId}/paymentRates/{paymentRateId} {
-      allow create: if isSignedIn() && isOwner(userId);
-      allow get, list, delete: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId) && get(/databases/$(database)/documents/users/$(userId)/places/$(placeId)) != null;
+       allow read, write: if isSignedIn() && isOwner(userId);
     }
   }
 }
