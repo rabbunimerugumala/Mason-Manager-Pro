@@ -27,128 +27,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
     /**
      * @description Manages user profiles, ensuring each user can only access their own profile.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their own profile if authenticated as 'user123'.
-     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
-     * @allow (get) User 'user123' can read their own profile.
-     * @deny (get) User 'user456' cannot read the 'user123' profile.
-     * @allow (update) User 'user123' can update their own profile.
-     * @deny (update) User 'user456' cannot update the 'user123' profile.
-     * @allow (delete) User 'user123' can delete their own profile.
-     * @deny (delete) User 'user456' cannot delete the 'user123' profile.
-     * @allow (list) User 'user123' can list users
-     * @deny (list) User 'user456' cannot list users
-     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow create: if isSignedIn() && isOwner(userId);
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn();
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow get, list: if isSignedIn();
+      allow update, delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
      * @description Manages construction site locations managed by a specific user.
      * @path /users/{userId}/places/{placeId}
-     * @allow (create) User 'user123' can create a place under their ID.
-     * @deny (create) User 'user456' cannot create a place under 'user123'.
-     * @allow (get) User 'user123' can read a place under their ID.
-     * @deny (get) User 'user456' cannot read a place under 'user123'.
-     * @allow (update) User 'user123' can update a place under their ID.
-     * @deny (update) User 'user456' cannot update a place under 'user123'.
-     * @allow (delete) User 'user123' can delete a place under their ID.
-     * @deny (delete) User 'user456' cannot delete a place under 'user123'.
-     * @allow (list) User 'user123' can list places under their ID.
-     * @deny (list) User 'user456' cannot list places under 'user123'.
-     * @principle Enforces user-specific data access and validates path consistency.
      */
     match /users/{userId}/places/{placeId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow create: if isSignedIn() && isOwner(userId);
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow get, list, delete: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId) && get(/databases/$(database)/documents/users/$(userId)) != null;
     }
 
     /**
      * @description Manages daily records of worker counts for a specific place, scoped to a user.
      * @path /users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId}
-     * @allow (create) User 'user123' can create a daily record for their place.
-     * @deny (create) User 'user456' cannot create a daily record for 'user123'.
-     * @allow (get) User 'user123' can read a daily record for their place.
-     * @deny (get) User 'user456' cannot read a daily record for 'user123'.
-     * @allow (update) User 'user123' can update a daily record for their place.
-     * @deny (update) User 'user456' cannot update a daily record for 'user123'.
-     * @allow (delete) User 'user123' can delete a daily record for their place.
-     * @deny (delete) User 'user456' cannot delete a daily record for 'user123'.
-     * @allow (list) User 'user123' can list daily records for their place.
-     * @deny (list) User 'user456' cannot list daily records for 'user123'.
-     * @principle Enforces user and place-specific data access and validates path consistency.
      */
     match /users/{userId}/places/{placeId}/dailyRecords/{dailyRecordId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow create: if isSignedIn() && isOwner(userId);
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow get, list, delete: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId) && get(/databases/$(database)/documents/users/$(userId)/places/$(placeId)) != null;
     }
 
     /**
      * @description Manages payment rates for workers and labourers at a specific place, scoped to a user.
      * @path /users/{userId}/places/{placeId}/paymentRates/{paymentRateId}
-     * @allow (create) User 'user123' can create a payment rate for their place.
-     * @deny (create) User 'user456' cannot create a payment rate for 'user123'.
-     * @allow (get) User 'user123' can read a payment rate for their place.
-     * @deny (get) User 'user456' cannot read a payment rate for 'user123'.
-     * @allow (update) User 'user123' can update a payment rate for their place.
-     * @deny (update) User 'user456' cannot update a payment rate for 'user123'.
-     * @allow (delete) User 'user123' can delete a payment rate for their place.
-     * @deny (delete) User 'user456' cannot delete a payment rate for 'user123'.
-     * @allow (list) User 'user123' can list payment rates for their place.
-     * @deny (list) User 'user456' cannot list payment rates for 'user123'.
-     * @principle Enforces user and place-specific data access and validates path consistency.
      */
     match /users/{userId}/places/{placeId}/paymentRates/{paymentRateId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
       allow create: if isSignedIn() && isOwner(userId);
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow get, list, delete: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId) && get(/databases/$(database)/documents/users/$(userId)/places/$(placeId)) != null;
     }
   }
 }
