@@ -10,9 +10,9 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, getDocumentsNonBlocking, FirestorePermissionError } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
-import { doc, getDocs, collection, query, where, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDocs, collection, query, where, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 
@@ -24,11 +24,9 @@ export default function AuthPage() {
   const { toast } = useToast();
 
   const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const SESSION_KEY = 'mason-manager-user-id';
-
+  
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -46,12 +44,12 @@ export default function AuthPage() {
     }
   }, [isClient, user, userProfile, router]);
 
-  const handleLogin = async () => {
-    if (!name.trim() || password.length < 8) {
+  const handleLoginOrSignup = async () => {
+    if (!name.trim()) {
         toast({
             variant: 'destructive',
             title: 'Invalid Input',
-            description: 'Please enter a valid name and a password of at least 8 characters.',
+            description: 'Please enter a valid name.',
         });
         return;
     }
@@ -59,62 +57,75 @@ export default function AuthPage() {
     setIsLoading(true);
     
     try {
-        if (!auth.currentUser) {
-            await signInAnonymously(auth);
-        }
-        
         const usersRef = collection(firestore, 'users');
         const q = query(usersRef, where("name", "==", name));
         const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-            const existingUserDoc = querySnapshot.docs[0];
-            const existingUser = existingUserDoc.data() as UserProfile;
-            
-            if (existingUser.password === password) {
-                // Correctly sign in and set the session for an existing user
-                const { user: authUser } = await signInAnonymously(auth);
-                sessionStorage.setItem(SESSION_KEY, existingUserDoc.id); // Use the *existing* user ID
-                (auth as any).updateCurrentUser({ ...authUser, uid: existingUserDoc.id }); // Force context update with correct UID
-                toast({ title: 'Logged In!', description: 'Welcome back.' });
-                router.push('/sites');
-            } else {
-                toast({ variant: 'destructive', title: 'Incorrect Password', description: 'The password for this user is incorrect.' });
-                setIsLoading(false);
-            }
-        } else {
-            // Create a new user
+        if (!auth) {
+            throw new Error("Auth service is not available.");
+        }
+
+        if (querySnapshot.empty) {
+            // --- NEW USER (SIGN UP) ---
             const { user: authUser } = await signInAnonymously(auth);
-            if (!authUser) {
-                throw new Error("Authentication failed. Please try again.");
-            }
-            const userId = authUser.uid; 
-            
-            const userData: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'> = {
+            if (!authUser) throw new Error("Authentication failed. Please try again.");
+
+            const newUserDocRef = doc(firestore, 'users', authUser.uid);
+            const newUser: Omit<UserProfile, 'createdAt' | 'updatedAt'> = {
+                id: authUser.uid,
                 name: name,
-                password: password,
-            };
-            
-            const newUserDocRef = doc(firestore, 'users', userId);
-            const data = {
-              ...userData,
-              id: userId,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
             };
 
-            await setDoc(newUserDocRef, data);
-            sessionStorage.setItem(SESSION_KEY, userId);
-            (auth as any).updateCurrentUser(authUser); // Ensure context is updated
+            await setDoc(newUserDocRef, {
+                ...newUser,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+
             toast({ title: 'Account Created!', description: 'Logged in successfully.' });
-            router.push('/sites');
+        } else {
+            // --- EXISTING USER (LOGIN) ---
+            const existingUserDoc = querySnapshot.docs[0];
+
+            // Sign out any lingering session
+            if (auth.currentUser) {
+                await signOut(auth);
+            }
+            
+            // Sign in with a new anonymous session
+            const { user: newAuthUser } = await signInAnonymously(auth);
+            if (!newAuthUser) throw new Error("Authentication failed during login. Please try again.");
+
+            // Update the existing document with the new UID
+            await updateDoc(existingUserDoc.ref, {
+                id: newAuthUser.uid, // Associate the existing profile with the new auth user
+                updatedAt: serverTimestamp(),
+            });
+            
+            // Create a new document with the new UID and old data, then delete the old one
+            const oldData = existingUserDoc.data();
+            const newUserDocRef = doc(firestore, 'users', newAuthUser.uid);
+
+            await setDoc(newUserDocRef, {
+                ...oldData,
+                id: newAuthUser.uid,
+                updatedAt: serverTimestamp(),
+            });
+
+            await setDoc(existingUserDoc.ref, { DELETED: true }, { merge: true }); // Mark old doc for cleanup if needed
+
+            toast({ title: 'Logged In!', description: 'Welcome back.' });
         }
+        
+        router.push('/sites');
+
     } catch (error) {
+        console.error("Login/Signup Error:", error);
         if (error instanceof FirestorePermissionError) {
           throw error;
         }
-        console.error("Login/Signup Error:", error);
         toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || 'An unexpected error occurred.' });
+    } finally {
         setIsLoading(false);
     }
   };
@@ -130,10 +141,6 @@ export default function AuthPage() {
             <Skeleton className="h-4 w-full mx-auto" />
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-1/4" />
-              <Skeleton className="h-10 w-full" />
-            </div>
             <div className="space-y-2">
               <Skeleton className="h-4 w-1/4" />
               <Skeleton className="h-10 w-full" />
@@ -155,7 +162,7 @@ export default function AuthPage() {
         <CardHeader>
           <CardTitle className="text-center">Welcome</CardTitle>
           <CardDescription className="text-center">
-            Enter your name and password to continue.
+            Enter your name to login or sign up.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -166,21 +173,10 @@ export default function AuthPage() {
               placeholder="e.g., John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+              onKeyDown={(e) => e.key === 'Enter' && handleLoginOrSignup()}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="8+ characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-            />
-          </div>
-          <Button onClick={handleLogin} disabled={isLoading} className={cn('w-full btn-gradient-primary')}>
+          <Button onClick={handleLoginOrSignup} disabled={isLoading} className={cn('w-full btn-gradient-primary')}>
             {isLoading ? <Loader2 className="animate-spin" /> : 'Login / Sign Up'}
           </Button>
         </CardContent>

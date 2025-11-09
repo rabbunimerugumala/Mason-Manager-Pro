@@ -29,7 +29,6 @@ export interface Place {
 export interface UserProfile {
     id: string;
     name: string;
-    password?: string;
     createdAt: string;
     updatedAt: string;
 }

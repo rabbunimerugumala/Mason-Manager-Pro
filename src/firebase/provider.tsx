@@ -15,7 +15,7 @@ interface FirebaseProviderProps {
 
 // Internal state for user authentication
 interface UserAuthState {
-  user: User | null; // This will now represent the Firestore user document ID
+  user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
 }
@@ -52,8 +52,6 @@ export interface UserHookResult {
 // React Context
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-const SESSION_KEY = 'mason-manager-user-id';
-
 /**
  * FirebaseProvider manages and provides Firebase services and user authentication state.
  */
@@ -79,21 +77,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => { 
-        if (firebaseUser) {
-           const storedUserId = sessionStorage.getItem(SESSION_KEY);
-           if (storedUserId) {
-             // We have a firebase auth user and a stored user ID from our app logic
-             // We'll use the stored ID as the "true" user identity for data fetching
-             setUserAuthState({ user: { ...firebaseUser, uid: storedUserId }, isUserLoading: false, userError: null });
-           } else {
-             // This can happen if they sign up and we set the session
-             setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-           }
-        } else {
-            // No firebase user
-            sessionStorage.removeItem(SESSION_KEY);
-            setUserAuthState({ user: null, isUserLoading: false, userError: null });
-        }
+        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { 
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
@@ -140,7 +124,6 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     throw new Error('Firebase core services not available. Check FirebaseProvider props.');
   }
   
-  // The user object might be a modified one, so we return the one from context
   const user = context.user as User | null;
 
   return {
