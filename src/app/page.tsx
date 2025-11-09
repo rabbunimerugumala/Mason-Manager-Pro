@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, getDocumentsNonBlocking, FirestorePermissionError } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
-import { doc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { doc, getDocs, collection, query, where, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 
@@ -72,15 +72,11 @@ export default function AuthPage() {
             const existingUser = existingUserDoc.data() as UserProfile;
             
             if (existingUser.password === password) {
-                // Since we need to maintain a session, but can't change the UID of an anonymous user,
-                // we'll sign out and sign back in to get a new anonymous user session, then
-                // associate our app's user ID with it via sessionStorage.
                 if (auth.currentUser) {
                   await signOut(auth);
                 }
                 const { user: authUser } = await signInAnonymously(auth);
                 sessionStorage.setItem(SESSION_KEY, existingUserDoc.id);
-                // Force update context
                 (auth as any).updateCurrentUser(authUser);
                 toast({ title: 'Logged In!', description: 'Welcome back.' });
                 router.push('/sites');
@@ -89,8 +85,7 @@ export default function AuthPage() {
                 setIsLoading(false);
             }
         } else {
-            // New user, the currentUser should already be an anonymous user
-            const authUser = auth.currentUser;
+            const { user: authUser } = await signInAnonymously(auth);
             if (!authUser) {
                 throw new Error("Authentication failed. Please try again.");
             }
@@ -115,7 +110,6 @@ export default function AuthPage() {
             router.push('/sites');
         }
     } catch (error) {
-        // Re-throw permission errors to be caught by the global error boundary
         if (error instanceof FirestorePermissionError) {
           throw error;
         }
