@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
 import { doc, getDocs, collection, query, where, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -44,7 +44,7 @@ export default function AuthPage() {
     }
   }, [isClient, user, userProfile, router]);
 
-  const handleLoginOrSignup = async () => {
+  const handleLoginOrSignup = () => {
     if (!name.trim()) {
         toast({
             variant: 'destructive',
@@ -55,79 +55,108 @@ export default function AuthPage() {
     }
     
     setIsLoading(true);
+
+    if (!auth) {
+        toast({ variant: 'destructive', title: 'Error', description: "Auth service is not available." });
+        setIsLoading(false);
+        return;
+    }
     
-    try {
-        const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, where("name", "==", name));
-        const querySnapshot = await getDocs(q);
+    const usersRef = collection(firestore, 'users');
+    const q = query(usersRef, where("name", "==", name));
 
-        if (!auth) {
-            throw new Error("Auth service is not available.");
-        }
-
+    getDocs(q).then(querySnapshot => {
         if (querySnapshot.empty) {
             // --- NEW USER (SIGN UP) ---
-            const { user: authUser } = await signInAnonymously(auth);
-            if (!authUser) throw new Error("Authentication failed. Please try again.");
+            signInAnonymously(auth).then(({ user: authUser }) => {
+                if (!authUser) throw new Error("Authentication failed. Please try again.");
 
-            const newUserDocRef = doc(firestore, 'users', authUser.uid);
-            const newUser: Omit<UserProfile, 'createdAt' | 'updatedAt'> = {
-                id: authUser.uid,
-                name: name,
-            };
+                const newUserDocRef = doc(firestore, 'users', authUser.uid);
+                const newUser: Omit<UserProfile, 'createdAt' | 'updatedAt'> = {
+                    id: authUser.uid,
+                    name: name,
+                };
+                const fullUserPayload = {
+                  ...newUser,
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                };
 
-            await setDoc(newUserDocRef, {
-                ...newUser,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
+                setDoc(newUserDocRef, fullUserPayload).catch(error => {
+                    const permissionError = new FirestorePermissionError({
+                        path: newUserDocRef.path,
+                        operation: 'create',
+                        requestResourceData: fullUserPayload,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                    setIsLoading(false);
+                });
+
+                toast({ title: 'Account Created!', description: 'Logged in successfully.' });
+                router.push('/sites');
+
+            }).catch(error => {
+              console.error("Anonymous sign-in Error:", error);
+              toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || 'An unexpected error occurred during sign-in.' });
+              setIsLoading(false);
             });
 
-            toast({ title: 'Account Created!', description: 'Logged in successfully.' });
         } else {
             // --- EXISTING USER (LOGIN) ---
             const existingUserDoc = querySnapshot.docs[0];
+            const oldUid = existingUserDoc.id;
 
-            // Sign out any lingering session
-            if (auth.currentUser) {
-                await signOut(auth);
-            }
-            
-            // Sign in with a new anonymous session
-            const { user: newAuthUser } = await signInAnonymously(auth);
-            if (!newAuthUser) throw new Error("Authentication failed during login. Please try again.");
+            // Sign out any lingering session before creating a new one
+            (auth.currentUser ? signOut(auth) : Promise.resolve()).then(() => {
+                signInAnonymously(auth).then(({ user: newAuthUser }) => {
+                    if (!newAuthUser) throw new Error("Authentication failed during login. Please try again.");
+                    
+                    const oldData = existingUserDoc.data();
+                    const updatedData = {
+                        ...oldData,
+                        id: newAuthUser.uid, // Update the ID to the new auth user's UID
+                        updatedAt: serverTimestamp(),
+                    };
 
-            // Update the existing document with the new UID
-            await updateDoc(existingUserDoc.ref, {
-                id: newAuthUser.uid, // Associate the existing profile with the new auth user
-                updatedAt: serverTimestamp(),
+                    const newUserDocRef = doc(firestore, 'users', newAuthUser.uid);
+                    
+                    // Create the new document
+                    setDoc(newUserDocRef, updatedData).then(() => {
+                        // Mark the old document for deletion
+                        const oldDocRef = doc(firestore, 'users', oldUid);
+                        updateDoc(oldDocRef, { DELETED_AT: serverTimestamp() }).catch(deleteError => {
+                            // Non-critical, just log it. The main login succeeded.
+                            console.error("Failed to mark old user document for deletion:", deleteError);
+                        });
+                        
+                        toast({ title: 'Logged In!', description: 'Welcome back.' });
+                        router.push('/sites');
+
+                    }).catch(error => {
+                         const permissionError = new FirestorePermissionError({
+                            path: newUserDocRef.path,
+                            operation: 'create',
+                            requestResourceData: updatedData,
+                        });
+                        errorEmitter.emit('permission-error', permissionError);
+                        setIsLoading(false);
+                    });
+
+                }).catch(error => {
+                    console.error("Anonymous sign-in Error on login:", error);
+                    toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || 'An unexpected error occurred during login.' });
+                    setIsLoading(false);
+                });
             });
-            
-            // Create a new document with the new UID and old data, then delete the old one
-            const oldData = existingUserDoc.data();
-            const newUserDocRef = doc(firestore, 'users', newAuthUser.uid);
-
-            await setDoc(newUserDocRef, {
-                ...oldData,
-                id: newAuthUser.uid,
-                updatedAt: serverTimestamp(),
-            });
-
-            await setDoc(existingUserDoc.ref, { DELETED: true }, { merge: true }); // Mark old doc for cleanup if needed
-
-            toast({ title: 'Logged In!', description: 'Welcome back.' });
         }
-        
-        router.push('/sites');
-
-    } catch (error) {
-        console.error("Login/Signup Error:", error);
-        if (error instanceof FirestorePermissionError) {
-          throw error;
-        }
-        toast({ variant: 'destructive', title: 'Error', description: (error as Error).message || 'An unexpected error occurred.' });
-    } finally {
+    }).catch(error => {
+        const permissionError = new FirestorePermissionError({
+            path: usersRef.path,
+            operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
         setIsLoading(false);
-    }
+    });
   };
   
   const effectiveLoading = isUserLoading || isProfileLoading;
