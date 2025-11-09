@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, getDocumentsNonBlocking, FirestorePermissionError } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, getDocumentsNonBlocking, FirestorePermissionError } from '@/firebase';
 import { signInAnonymously, signOut } from 'firebase/auth';
 import { doc, getDocs, collection, query, where, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -72,12 +72,10 @@ export default function AuthPage() {
             const existingUser = existingUserDoc.data() as UserProfile;
             
             if (existingUser.password === password) {
-                if (auth.currentUser) {
-                  await signOut(auth);
-                }
+                // Correctly sign in and set the session for an existing user
                 const { user: authUser } = await signInAnonymously(auth);
-                sessionStorage.setItem(SESSION_KEY, existingUserDoc.id);
-                (auth as any).updateCurrentUser(authUser);
+                sessionStorage.setItem(SESSION_KEY, existingUserDoc.id); // Use the *existing* user ID
+                (auth as any).updateCurrentUser({ ...authUser, uid: existingUserDoc.id }); // Force context update with correct UID
                 toast({ title: 'Logged In!', description: 'Welcome back.' });
                 router.push('/sites');
             } else {
@@ -85,6 +83,7 @@ export default function AuthPage() {
                 setIsLoading(false);
             }
         } else {
+            // Create a new user
             const { user: authUser } = await signInAnonymously(auth);
             if (!authUser) {
                 throw new Error("Authentication failed. Please try again.");
@@ -106,6 +105,7 @@ export default function AuthPage() {
 
             await setDoc(newUserDocRef, data);
             sessionStorage.setItem(SESSION_KEY, userId);
+            (auth as any).updateCurrentUser(authUser); // Ensure context is updated
             toast({ title: 'Account Created!', description: 'Logged in successfully.' });
             router.push('/sites');
         }
