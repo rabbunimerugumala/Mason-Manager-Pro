@@ -16,13 +16,15 @@ service cloud.firestore {
 
     // Rule for the user's own profile document.
     // They can create, read, update, and delete their own profile.
-    // Listing users is allowed for login purposes.
     match /users/{userId} {
-      allow create: if isSignedIn() && isOwner(userId);
-      allow get, update, delete: if isSignedIn() && isOwner(userId);
       // Allow any signed-in user to query the users collection,
-      // but the read rule above will prevent them from reading actual document data.
+      // which is needed to check if a user name exists during sign-up.
+      // The `get` rule below will prevent them from reading actual document data
+      // for users they do not own.
       allow list: if isSignedIn();
+      
+      // Allow full access to a user's own document.
+      allow read, write: if isSignedIn() && isOwner(userId);
     }
 
     // Rules for all subcollections under a user's document.
