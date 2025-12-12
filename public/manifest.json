@@ -1,6 +1,6 @@
 {
-  "name": "Mason Manager Pro",
-  "short_name": "MasonPro",
+  "name": "Manager Pro",
+  "short_name": "ManagerPro",
   "description": "Manage daily worker attendance, wages, and sites.",
   "start_url": "/",
   "display": "standalone",

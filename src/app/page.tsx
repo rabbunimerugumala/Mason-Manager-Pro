@@ -1,20 +1,46 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
-import { signInAnonymously, signOut, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDocs, collection, query, where, serverTimestamp, setDoc } from 'firebase/firestore';
-import type { UserProfile } from '@/lib/types';
-
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import {
+  useUser,
+  useAuth,
+  useFirestore,
+  useDoc,
+  useMemoFirebase,
+  FirestorePermissionError,
+  errorEmitter,
+} from "@/firebase";
+import {
+  signInAnonymously,
+  signOut,
+  User as FirebaseUser,
+} from "firebase/auth";
+import {
+  doc,
+  getDocs,
+  collection,
+  query,
+  where,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import * as bcrypt from "bcryptjs";
+import type { UserProfile } from "@/lib/types";
 
 export default function AuthPage() {
   const { user, isUserLoading } = useUser();
@@ -23,39 +49,54 @@ export default function AuthPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  
+
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   const userDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
+    () => (user ? doc(firestore, "users", user.uid) : null),
     [user, firestore]
   );
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
-
+  const { data: userProfile, isLoading: isProfileLoading } =
+    useDoc<UserProfile>(userDocRef);
 
   useEffect(() => {
     if (isClient && user && userProfile) {
-      router.replace('/sites');
+      router.replace("/sites");
     }
   }, [isClient, user, userProfile, router]);
-  
+
   const handleLoginOrSignup = async () => {
     if (!name.trim()) {
       toast({
-        variant: 'destructive',
-        title: 'Invalid Input',
-        description: 'Please enter a valid name.',
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter a valid name.",
+      });
+      return;
+    }
+
+    if (!password.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter a password.",
       });
       return;
     }
 
     if (!auth || !firestore) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Firebase service is not available.' });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Firebase service is not available.",
+      });
       return;
     }
 
@@ -68,79 +109,98 @@ export default function AuthPage() {
         const userCredential = await signInAnonymously(auth);
         authUser = userCredential.user;
       }
-      
+
       if (!authUser) {
-          throw new Error("Authentication failed. Please try again.");
+        throw new Error("Authentication failed. Please try again.");
       }
 
       // Step 2: Now that we are authenticated, query the database.
-      const usersRef = collection(firestore, 'users');
+      const usersRef = collection(firestore, "users");
       const q = query(usersRef, where("name", "==", name));
-      
+
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
         // --- NEW USER (SIGN UP) ---
-        const newUserDocRef = doc(firestore, 'users', authUser.uid);
-        const newUser: Omit<UserProfile, 'createdAt' | 'updatedAt'> = {
+        const newUserDocRef = doc(firestore, "users", authUser.uid);
+
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser: Omit<UserProfile, "createdAt" | "updatedAt"> = {
           id: authUser.uid,
           name: name,
         };
         const fullUserPayload = {
           ...newUser,
+          password: hashedPassword, // Store hashed password
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
 
         await setDoc(newUserDocRef, fullUserPayload);
-        
-        toast({ title: 'Account Created!', description: 'Logged in successfully.' });
-        router.push('/sites');
 
+        // Store the user ID in sessionStorage for the Header to use
+        sessionStorage.setItem("mason-manager-user-id", authUser.uid);
+
+        toast({
+          title: "Account Created!",
+          description: "Logged in successfully.",
+          duration: 2000,
+        });
+        router.push("/sites");
       } else {
         // --- EXISTING USER (LOGIN) ---
-        // In this anonymous auth model, we assume if the name exists, we log them in.
-        // The existing user's data is already associated with their original UID.
-        // We'll sign out the current temp user and sign in again to create a new session
-        // associated with the existing data.
         const existingUserDoc = querySnapshot.docs[0];
-        const existingUser = existingUserDoc.data() as UserProfile;
-        
-        // This is a simplified login. In a real app with passwords, you'd verify credentials here.
-        // For this app, we just re-associate the session.
-        sessionStorage.setItem('mason-manager-user-id', existingUser.id);
-        
-        // Force the provider to re-evaluate the user state
-        if (auth.currentUser?.uid !== existingUser.id) {
-          (auth as any).updateCurrentUser(null).then(() => {
-              const fakeUser = { uid: existingUser.id } as FirebaseUser;
-              (auth as any).updateCurrentUser(fakeUser);
+        const existingUser = existingUserDoc.data() as UserProfile & {
+          password?: string;
+        };
+
+        // Verify password using bcrypt
+        const passwordMatch = existingUser.password
+          ? await bcrypt.compare(password, existingUser.password)
+          : false;
+
+        if (!passwordMatch) {
+          toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: "Incorrect password.",
+            duration: 2000,
           });
+          return;
         }
-        
-        toast({ title: 'Logged In!', description: 'Welcome back.' });
-        router.push('/sites');
+
+        // Password matches, log them in
+        sessionStorage.setItem("mason-manager-user-id", existingUser.id);
+
+        toast({
+          title: "Logged In!",
+          description: "Welcome back.",
+          duration: 2000,
+        });
+        router.push("/sites");
       }
     } catch (error: any) {
       console.error("Login/Signup Error:", error);
-      
+
       // Emit contextual error for Firestore permission issues
-      if (error.code === 'permission-denied') {
+      if (error.code === "permission-denied") {
         errorEmitter.emit(
-          'permission-error',
+          "permission-error",
           new FirestorePermissionError({
             path: `users`,
-            operation: 'list', // This is the most likely initial failure point
+            operation: "list", // This is the most likely initial failure point
           })
         );
       } else {
         toast({
-          variant: 'destructive',
-          title: 'An error occurred',
-          description: error.message || 'Could not complete login/signup.',
+          variant: "destructive",
+          title: "An error occurred",
+          description: error.message || "Could not complete login/signup.",
         });
       }
-      
+
       // If something went wrong, sign out any partial anonymous session
       if (auth.currentUser) {
         await signOut(auth);
@@ -149,7 +209,7 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
-  
+
   const effectiveLoading = isUserLoading || isProfileLoading;
 
   if (!isClient || effectiveLoading) {
@@ -171,7 +231,7 @@ export default function AuthPage() {
       </div>
     );
   }
-  
+
   if (user && userProfile) {
     return null;
   }
@@ -182,7 +242,12 @@ export default function AuthPage() {
         <CardHeader>
           <CardTitle className="text-center">Welcome</CardTitle>
           <CardDescription className="text-center">
-            Enter your name to login or sign up.
+            Manage your work sites, track worker attendance, and log daily
+            expenses effortlessly.
+            <br />
+            <span className="text-xs">
+              Enter your name and password to login or sign up.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -193,11 +258,44 @@ export default function AuthPage() {
               placeholder="e.g., John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleLoginOrSignup()}
+              onKeyDown={(e) => e.key === "Enter" && handleLoginOrSignup()}
             />
           </div>
-          <Button onClick={handleLoginOrSignup} disabled={isLoading} className={cn('w-full btn-gradient-primary')}>
-            {isLoading ? <Loader2 className="animate-spin" /> : 'Login / Sign Up'}
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLoginOrSignup()}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+              >
+                {showPassword ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </div>
+          <Button
+            onClick={handleLoginOrSignup}
+            disabled={isLoading}
+            className={cn("w-full btn-gradient-primary")}
+          >
+            {isLoading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              "Login / Sign Up"
+            )}
           </Button>
         </CardContent>
       </Card>

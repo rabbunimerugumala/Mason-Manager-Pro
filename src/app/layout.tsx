@@ -1,14 +1,17 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { Header } from '@/components/layout/Header';
-import { Toaster } from '@/components/ui/toaster';
-import { cn } from '@/lib/utils';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import type { Metadata } from "next";
+import "./globals.css";
+import { Header } from "@/components/layout/Header";
+import { Toaster } from "@/components/ui/toaster";
+import { cn } from "@/lib/utils";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
-  title: 'Mason Manager Pro',
-  description: 'Manage daily worker attendance, wages, and sites.',
-  manifest: '/manifest.json',
+  title: "Manager Pro",
+  description: "Manage daily worker attendance, wages, and sites.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/hook.png",
+  },
 };
 
 export default function RootLayout({
@@ -19,17 +22,28 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/hook.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap"
+          rel="stylesheet"
+          crossOrigin="anonymous"
+        />
       </head>
-      <body className={cn('font-body antialiased bg-background text-foreground')}>
+      <body
+        className={cn("font-body antialiased bg-background text-foreground")}
+      >
         <FirebaseClientProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-1">{children}</main>
-            </div>
-            <Toaster />
+          <div className="relative flex min-h-screen flex-col">
+            <Header />
+            <main className="flex-1">{children}</main>
+          </div>
+          <Toaster />
         </FirebaseClientProvider>
       </body>
     </html>

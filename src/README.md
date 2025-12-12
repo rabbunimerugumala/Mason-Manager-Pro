@@ -1,4 +1,4 @@
-# Mason Manager Pro
+# Manager Pro
 
 Mason Manager Pro is a modern, responsive web application built with Next.js, designed to help construction site managers or contractors easily track daily worker attendance, manage wages, and log miscellaneous expenses. It supports multiple user accounts on the same device, with data for each user stored securely and separately in the browser's local storage.
 

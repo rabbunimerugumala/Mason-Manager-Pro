@@ -1,82 +1,268 @@
-# Mason Manager Pro
+# Manager Pro
 
-Mason Manager Pro is a modern, responsive web application built with Next.js, designed to help construction site managers or contractors easily track daily worker attendance, manage wages, and log miscellaneous expenses. It supports multiple user accounts on the same device, with data for each user stored securely and separately in the browser's local storage.
+Manager Pro is a modern, responsive web application designed for construction site managers and contractors to efficiently manage daily operations. Built with cutting-edge technologies, it enables users to track worker attendance, manage labor costs, log miscellaneous expenses, and generate professional reports—all with a secure, user-friendly interface.
 
-## Features
+## Overview
 
--   **Multi-User Accounts**: Create multiple user accounts, each with a unique username and password. All data is sandboxed per user, ensuring privacy and separation of work sites.
--   **Local-First Authentication**: A secure and fast login/signup system that stores user credentials locally on the device.
--   **Multi-Site Management**: Create, edit, and delete multiple construction work sites, each with its own specific payment rates.
--   **Daily Attendance Tracking**: Easily log the number of workers and labourers present on any given day using a simple counter interface.
--   **Dynamic Cost Logging**: Add, edit, and delete an unlimited number of additional daily costs (e.g., "Cement bags," "Machine rental") with descriptions and amounts.
--   **Rate Customization**: Set and update the daily payment rates for workers and labourers on a per-site basis.
--   **Automated Payment Calculation**: The app automatically calculates total payments for the current day and the current week in real-time.
--   **Weekly Grouped History**: View a complete history of all records, neatly organized and grouped by week (from Monday to Saturday). Each week displays a sub-total for easy review.
--   **PDF Export**: Generate a professional, detailed PDF report of the entire history for a work site, including weekly totals and a grand total.
--   **Share as JPG**: Share a summary of any specific week's work as a downloadable JPG image, ideal for quick updates via messaging apps.
--   **Fully Mobile-Responsive**: The UI is optimized for all screen sizes. Dialogs adapt into drawers on mobile for a seamless experience.
--   **Persistent & Private Local Storage**: All your data is automatically saved in the browser's `localStorage` and is tied to your user account on the specific device you are using.
--   **Modern UI**: Built with ShadCN UI and Tailwind CSS for a consistent and professional design.
+Manager Pro supports multi-user accounts with role-based data isolation, cloud-based storage via Firestore, and comprehensive tools for financial tracking and reporting. Whether managing a single site or multiple construction projects, Manager Pro streamlines operations and provides real-time financial insights.
+
+## Key Features
+
+- **Multi-User Accounts with Secure Authentication**: Create multiple user accounts with encrypted password security using bcryptjs. Each user's data is completely isolated and private.
+- **Cloud-Based Data Storage**: All data is securely stored in Google Firebase Firestore with real-time synchronization across devices.
+- **Multi-Site Management**: Create, edit, and manage multiple construction sites with independent payment rates and configurations.
+- **Daily Attendance Tracking**: Log worker and laborer attendance with an intuitive counter interface.
+- **Dynamic Cost Logging**: Add and track unlimited daily expenses (materials, equipment rental, etc.) with automatic categorization.
+- **Real-Time Financial Calculations**: Automatic computation of daily and weekly payment totals.
+- **Weekly Grouped History**: View comprehensive records organized by week with running totals and analytics.
+- **Professional PDF Export**: Generate detailed PDF reports with weekly summaries and financial breakdowns.
+- **Image Export**: Share weekly summaries as JPG images for quick distribution via messaging platforms.
+- **Fully Responsive Design**: Optimized for desktop, tablet, and mobile devices with adaptive UI components.
+- **Real-Time Updates**: Changes sync instantly across all user sessions using Firestore listeners.
+- **Comprehensive Settings**: User account management, data privacy controls, and secure data deletion options.
 
 ## Tech Stack
 
--   **Framework**: [Next.js](https://nextjs.org/) (using the App Router)
--   **Language**: [TypeScript](https://www.typescriptlang.org/)
--   **UI Components**: [ShadCN UI](https://ui.shadcn.com/) (including responsive Dialogs/Drawers)
--   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
--   **State Management**: React Context API (`UserContext` & `DataContext`) with `localStorage` for persistence.
--   **Forms**: [React Hook Form](https://react-hook-form.com/)
--   **Schema Validation**: [Zod](https://zod.dev/)
--   **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF) & [jsPDF-AutoTable](https://github.com/simonbengtsson/jsPDF-AutoTable)
--   **Image Generation**: [html-to-image](https://github.com/bubkoo/html-to-image)
--   **Date & Time**: [date-fns](https://date-fns.org/)
--   **Icons**: [Lucide React](https://lucide.dev/)
+| Category | Technology |
+|----------|-----------|
+| **Framework** | Next.js 15.3.3 with App Router & Turbopack |
+| **Language** | TypeScript |
+| **Backend/Database** | Google Firebase (Authentication, Firestore, Cloud Storage) |
+| **Frontend UI** | ShadCN UI + Radix UI Components |
+| **Styling** | Tailwind CSS with custom animations |
+| **State Management** | React Hooks, Firebase Hooks, React Context API |
+| **Form Handling** | React Hook Form with Zod validation |
+| **PDF Generation** | jsPDF + jsPDF-AutoTable |
+| **Image Processing** | html-to-image |
+| **Password Security** | bcryptjs (10-round hashing) |
+| **Date/Time** | date-fns |
+| **Icons** | Lucide React |
+| **PWA Support** | next-pwa |
 
-## Application Flow
+## Getting Started
 
-1.  **Authentication**: The user is first greeted with a login/signup page. They can create a new account or log in with existing credentials.
-2.  **Home Page (Work Sites)**: After logging in, the user lands on the home page, where they can see a list of all their existing work sites. From here, they can create a new site or choose an existing one to manage.
-3.  **Site Dashboard**: Selecting a site takes the user to its dashboard. This is the main control center for logging daily attendance, adding costs, and updating payment rates.
-4.  **History Log**: From the dashboard, the user can navigate to the "History Log" to view all past records for that site. The history is grouped by week and includes options to export to PDF or share a week as a JPG.
-5.  **Settings**: The user can access the settings page from the profile dropdown in the header. Here, they have the option to clear all data associated with their account.
-6.  **Sign Out**: The user can sign out from the profile dropdown, which will return them to the login screen.
+### Prerequisites
 
-## Data Storage
+- **Node.js** 18+ and npm (or yarn/pnpm)
+- **Firebase Project**: Set up a Firebase project at [firebase.google.com](https://firebase.google.com)
+- **Environment Variables**: Firebase configuration keys (see Setup section)
 
-All data is stored locally in the browser's `localStorage` on the device you are using. This makes the app fast and functional even when offline. Data is sandboxed per user.
+### Installation
 
--   **User Accounts**: A list of all users is stored under the key `mason-manager-users`.
--   **Current User Session**: The currently logged-in user's information is stored under `mason-manager-current-user`.
--   **Site & Record Data**: All work sites and daily records are stored under a key unique to the logged-in user, like `mason-manager-pro-data-username`. This ensures that each user's data is kept separate and private on that device.
+1. **Clone or Download the Repository**
+   ```bash
+   git clone <repository-url>
+   cd Manager-Pro
+   ```
 
-## Project Structure & File Descriptions
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment Variables**
+   
+   Create a `.env` file in the root directory and add your Firebase configuration:
+   
+   ```bash
+   # Firebase Web Config
+   NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+   
+   # Admin/Deletion Scripts (Optional)
+   SERVICE_ACCOUNT_PATH=/path/to/service-account.json
+   FIREBASE_PROJECT_ID=your_project_id
+   ```
+
+   > **Note**: Obtain these values from your Firebase project settings. `NEXT_PUBLIC_*` variables are safe to expose in the client bundle.
+
+4. **Run the Development Server**
+   ```bash
+   npm run dev
+   ```
+   
+   The application will be available at `http://localhost:9002`
+
+5. **Build for Production**
+   ```bash
+   npm run build
+   npm start
+   ```
+
+### Available Scripts
+
+| Command | Description |
+|---------|------------|
+| `npm run dev` | Start development server with Turbopack (port 9002) |
+| `npm run build` | Build optimized production bundle |
+| `npm start` | Run production server |
+| `npm run lint` | Run ESLint for code quality |
+| `npm run typecheck` | Verify TypeScript type safety |
+| `npm run firestore:delete-dailyRecords` | Admin script to safely delete all work records (dry-run mode by default) |
+
+## Application Workflow
+
+### 1. Authentication (Login/Signup)
+- Users enter a name and password to create or access their account
+- Passwords are securely hashed using bcryptjs (10 rounds)
+- Authentication persists across browser sessions
+
+### 2. Dashboard (Work Sites)
+- View all created work sites
+- Create new sites with custom daily payment rates
+- Quick actions for editing, accessing, or deleting sites
+
+### 3. Site Management
+- Log daily worker attendance and labor costs
+- Add unlimited miscellaneous expenses with descriptions
+- Update payment rates dynamically
+- Real-time calculations for daily and weekly totals
+
+### 4. History & Reports
+- View all past records grouped by week
+- Export comprehensive PDF reports with financial summaries
+- Share weekly summaries as JPG images
+- Filter and search historical data
+
+### 5. Settings & Account Management
+- Change account settings
+- Clear all personal data (with confirmation)
+- Secure logout
+
+## Database Architecture (Firestore)
 
 ```
-.
-├── src
-│   ├── app
-│   │   ├── places
-│   │   │   ├── [id]
-│   │   │   │   ├── history
-│   │   │   │   │   └── page.tsx      # Displays weekly grouped history for a site
-│   │   │   │   └── page.tsx          # Main dashboard for a specific work site
-│   │   ├── settings
-│   │   │   └── page.tsx              # Settings page for the current user
-│   │   ├── sites
-│   │   │   └── page.tsx              # Home page displaying user's work sites
-│   │   ├── globals.css           # Global styles and Tailwind CSS theme
-│   │   ├── layout.tsx            # Root layout with providers
-│   │   └── page.tsx              # Login/Signup page
-│   ├── components
-│   │   ├── layout/Header.tsx       # App header with user profile dropdown
-│   │   ├── places/PlaceCard.tsx    # Card for a single work site
-│   │   ├── places/PlaceForm.tsx    # Form for creating/editing sites
-│   │   └── records/              # Components for history and record management
-│   ├── contexts
-│   │   ├── DataContext.tsx         # State management for sites and records (per user)
-│   │   └── UserContext.tsx         # State management for user accounts and auth
-│   ├── hooks/
-│   ├── lib/
-│   └── ...
-└── ...
+users/
+├── {uid}/
+│   ├── id: string
+│   ├── name: string
+│   ├── password: string (hashed)
+│   ├── createdAt: timestamp
+│   ├── updatedAt: timestamp
+│   └── places/ (subcollection)
+│       ├── {placeId}/
+│       │   ├── id: string
+│       │   ├── name: string
+│       │   ├── workerRate: number
+│       │   ├── laborerRate: number
+│       │   ├── createdAt: timestamp
+│       │   ├── updatedAt: timestamp
+│       │   └── dailyRecords/ (subcollection)
+│       │       ├── {recordId}/
+│       │       │   ├── id: string
+│       │       │   ├── date: string (YYYY-MM-DD)
+│       │       │   ├── workerCount: number
+│       │       │   ├── laborerCount: number
+│       │       │   ├── additionalCosts: array
+│       │       │   ├── createdAt: timestamp
+│       │       │   └── updatedAt: timestamp
 ```
+
+## Security Considerations
+
+- **Password Security**: Passwords are hashed using bcryptjs with 10 rounds before storage
+- **Firebase Security Rules**: Configure Firestore rules to restrict user access to their own data only
+- **Environment Variables**: Never commit `.env` with sensitive keys to version control
+- **HTTPS Only**: Always deploy to HTTPS-enabled platforms (Vercel, Firebase Hosting, etc.)
+- **Service Accounts**: Keep service account JSON files private and never commit to repositories
+
+## Deployment
+
+### Vercel (Recommended for Next.js)
+1. Push code to GitHub
+2. Connect repository to Vercel
+3. Add environment variables in Vercel dashboard
+4. Deploy with one click
+
+### Firebase Hosting
+1. Install Firebase CLI: `npm install -g firebase-tools`
+2. Build: `npm run build`
+3. Deploy: `firebase deploy`
+
+## File Structure
+
+```
+src/
+├── app/
+│   ├── (auth) / page.tsx              # Login/Signup page
+│   ├── places/
+│   │   ├── page.tsx                   # Work sites dashboard
+│   │   └── [id]/
+│   │       ├── page.tsx               # Site detail & management
+│   │       └── history/ page.tsx      # Weekly history & reports
+│   ├── settings/ page.tsx             # User settings
+│   ├── layout.tsx                     # Root layout with providers
+│   └── globals.css                    # Global styles
+├── components/
+│   ├── layout/ Header.tsx             # Navigation header
+│   ├── places/                        # Site management components
+│   ├── records/                       # Record & history components
+│   ├── ui/                            # ShadCN UI components
+│   └── FirebaseErrorListener.tsx      # Global error handler
+├── firebase/
+│   ├── config.ts                      # Firebase initialization
+│   ├── index.ts                       # Custom hooks & utilities
+│   ├── provider.tsx                   # Firebase context providers
+│   └── firestore/                     # Firestore hooks
+├── hooks/                             # Custom React hooks
+├── lib/
+│   ├── types.ts                       # TypeScript interfaces
+│   ├── utils.ts                       # Helper functions
+│   └── pdf-generator.ts               # PDF export logic
+├── ai/                                # Genkit AI integration (optional)
+└── public/                            # Static assets
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: "Firebase service is not available"
+- **Solution**: Verify `.env` file contains correct Firebase credentials
+
+**Issue**: "Permission denied" errors
+- **Solution**: Check Firestore security rules allow user access to their own data
+
+**Issue**: Password hashing errors
+- **Solution**: Ensure bcryptjs is installed: `npm install bcryptjs`
+
+**Issue**: Build fails with TypeScript errors
+- **Solution**: Run `npm run typecheck` to identify issues; fix and rebuild
+
+## Performance Optimizations
+
+- **Turbopack**: Fast compilation and HMR in development
+- **Firebase Caching**: Automatic client-side caching for better performance
+- **Image Optimization**: Next.js Image component for responsive images
+- **Code Splitting**: Automatic by Next.js App Router
+- **PWA Support**: Offline capability and app-like experience
+
+## Contributing
+
+For bug reports, feature requests, or contributions, please:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License. See `LICENSE` file for details.
+
+## Support
+
+For support, issues, or questions:
+- Email: support@managerpro.app
+- GitHub Issues: [Create an issue](https://github.com/yourusername/manager-pro/issues)
+- Documentation: [Full docs](https://docs.managerpro.app)
+
+---
+
+**Manager Pro** — Empowering construction professionals with intelligent project management.
+
+*Built with ❤️ using Next.js, Firebase, and TypeScript*
