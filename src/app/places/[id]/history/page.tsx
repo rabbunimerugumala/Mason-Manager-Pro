@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toJpeg } from 'html-to-image';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 
 
@@ -38,13 +38,13 @@ export default function HistoryPage() {
 
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
-  const placeDocRef = useMemoFirebase(
+  const placeDocRef = useMemo(
     () => (user && placeId ? doc(firestore, 'users', user.uid, 'places', placeId) : null),
     [user, firestore, placeId]
   );
   const { data: place, isLoading: placeLoading } = useDoc<Place>(placeDocRef);
 
-  const recordsCollectionRef = useMemoFirebase(
+  const recordsCollectionRef = useMemo(
     () => (placeDocRef ? collection(placeDocRef, 'dailyRecords') : null),
     [placeDocRef]
   );

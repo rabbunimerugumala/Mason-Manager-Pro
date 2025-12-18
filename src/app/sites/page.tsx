@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PlusCircle } from 'lucide-react';
 import type { Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { collection } from 'firebase/firestore';
 
 export default function SitesPage() {
@@ -27,7 +27,7 @@ export default function SitesPage() {
     setIsClient(true);
   }, []);
 
-  const placesCollectionRef = useMemoFirebase(
+  const placesCollectionRef = useMemo(
     () => (user ? collection(firestore, 'users', user.uid, 'places') : null),
     [user, firestore]
   );

@@ -13,7 +13,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { RecordForm } from './RecordForm';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { deleteDoc } from 'firebase/firestore';
 import { doc } from 'firebase/firestore';
 
 
@@ -39,9 +40,16 @@ export function HistoryCard({ record, place }: HistoryCardProps) {
         if (!user) return;
         setIsDeleting(true);
         const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', record.id);
-        deleteDocumentNonBlocking(recordRef);
-        toast({ title: 'Success', description: 'Record deleted.' });
-        setIsDeleting(false);
+        deleteDoc(recordRef)
+          .then(() => {
+            toast({ title: 'Success', description: 'Record deleted.' });
+          })
+          .catch((error) => {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete record.' });
+          })
+          .finally(() => {
+            setIsDeleting(false);
+          });
     };
 
     const EditRecordDialog = () => (

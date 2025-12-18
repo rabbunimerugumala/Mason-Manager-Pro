@@ -13,7 +13,8 @@ import { PlaceForm } from './PlaceForm';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { deleteDoc } from 'firebase/firestore';
 import { doc, collection, getDocs, writeBatch } from 'firebase/firestore';
 
 interface PlaceCardProps {
@@ -46,9 +47,13 @@ export function PlaceCard({ place }: PlaceCardProps) {
         });
         await batch.commit();
 
-        deleteDocumentNonBlocking(placeRef);
-
-        toast({ title: 'Success', description: 'Work site and all its records deleted.' });
+        deleteDoc(placeRef)
+          .then(() => {
+            toast({ title: 'Success', description: 'Work site and all its records deleted.' });
+          })
+          .catch((error) => {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete site.' });
+          });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not delete site.' });
     } finally {

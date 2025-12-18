@@ -15,8 +15,8 @@ import { format, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Place, AdditionalCost, DailyRecord } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
+import { doc, collection, query, where, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
 
 
 export default function PlaceDashboard() {
@@ -37,7 +37,7 @@ export default function PlaceDashboard() {
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [todayRecordId, setTodayRecordId] = useState<string | null>(null);
 
-  const placeDocRef = useMemoFirebase(
+  const placeDocRef = useMemo(
     () => (user && placeId ? doc(firestore, 'users', user.uid, 'places', placeId) : null),
     [user, firestore, placeId]
   );
@@ -45,7 +45,7 @@ export default function PlaceDashboard() {
 
   const formattedSelectedDate = format(selectedDate, 'yyyy-MM-dd');
 
-  const todayRecordQuery = useMemoFirebase(() => {
+  const todayRecordQuery = useMemo(() => {
     if (!placeDocRef) return null;
     return query(collection(placeDocRef, 'dailyRecords'), where('date', '==', formattedSelectedDate));
   }, [placeDocRef, formattedSelectedDate]);
@@ -91,27 +91,49 @@ export default function PlaceDashboard() {
     
     if (todayRecordId) {
       const recordRef = doc(placeDocRef, 'dailyRecords', todayRecordId);
-      updateDocumentNonBlocking(recordRef, recordPayload);
+      updateDoc(recordRef, recordPayload)
+        .then(() => {
+          toast({ title: 'Success', description: "Record saved." });
+        })
+        .catch((error) => {
+          toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to save record.' });
+        })
+        .finally(() => {
+          setIsSavingRecord(false);
+        });
     } else {
       const recordsCollectionRef = collection(placeDocRef, 'dailyRecords');
-      addDocumentNonBlocking(recordsCollectionRef, {...recordPayload, createdAt: serverTimestamp() });
+      addDoc(recordsCollectionRef, {...recordPayload, createdAt: serverTimestamp() })
+        .then(() => {
+          toast({ title: 'Success', description: "Record saved." });
+        })
+        .catch((error) => {
+          toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to save record.' });
+        })
+        .finally(() => {
+          setIsSavingRecord(false);
+        });
     }
-    
-    toast({ title: 'Success', description: "Record saved." });
-    setIsSavingRecord(false);
   };
   
   const handleSaveRates = () => {
     if (!placeDocRef) return;
     setIsSavingRates(true);
 
-    updateDocumentNonBlocking(placeDocRef, { 
+    updateDoc(placeDocRef, { 
         workerRate: Number(workerRate) || 0, 
         labourerRate: Number(labourerRate) || 0,
         updatedAt: serverTimestamp() 
-    });
-    toast({ title: 'Success', description: 'Payment rates updated.' });
-    setIsSavingRates(false);
+    })
+      .then(() => {
+        toast({ title: 'Success', description: 'Payment rates updated.' });
+      })
+      .catch((error) => {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update rates.' });
+      })
+      .finally(() => {
+        setIsSavingRates(false);
+      });
   };
 
   const handleAdditionalCostChange = (index: number, field: 'description' | 'amount', value: string | number) => {
@@ -148,7 +170,7 @@ export default function PlaceDashboard() {
 
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   
-  const weeklyRecordsQuery = useMemoFirebase(() => {
+  const weeklyRecordsQuery = useMemo(() => {
       if (!placeDocRef) return null;
       return query(collection(placeDocRef, 'dailyRecords'), where('date', '>=', weekStart));
   }, [placeDocRef, weekStart]);

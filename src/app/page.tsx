@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,7 +21,6 @@ import {
   useAuth,
   useFirestore,
   useDoc,
-  useMemoFirebase,
   FirestorePermissionError,
   errorEmitter,
 } from "@/firebase";
@@ -41,6 +40,7 @@ import {
 } from "firebase/firestore";
 import * as bcrypt from "bcryptjs";
 import type { UserProfile } from "@/lib/types";
+import { STORAGE_KEYS } from "@/lib/constants";
 
 export default function AuthPage() {
   const { user, isUserLoading } = useUser();
@@ -59,7 +59,7 @@ export default function AuthPage() {
     setIsClient(true);
   }, []);
 
-  const userDocRef = useMemoFirebase(
+  const userDocRef = useMemo(
     () => (user ? doc(firestore, "users", user.uid) : null),
     [user, firestore]
   );
@@ -141,7 +141,7 @@ export default function AuthPage() {
         await setDoc(newUserDocRef, fullUserPayload);
 
         // Store the user ID in sessionStorage for the Header to use
-        sessionStorage.setItem("mason-manager-user-id", authUser.uid);
+        sessionStorage.setItem(STORAGE_KEYS.USER_ID, authUser.uid);
 
         toast({
           title: "Account Created!",
@@ -172,7 +172,8 @@ export default function AuthPage() {
         }
 
         // Password matches, log them in
-        sessionStorage.setItem("mason-manager-user-id", existingUser.id);
+        // Use the document ID (not the id field from data) as it's the actual Firestore document ID
+        sessionStorage.setItem(STORAGE_KEYS.USER_ID, existingUserDoc.id);
 
         toast({
           title: "Logged In!",

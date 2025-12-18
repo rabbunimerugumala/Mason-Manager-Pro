@@ -12,8 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
-import { useUser, useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 
 const additionalCostSchema = z.object({
@@ -60,9 +60,14 @@ export function RecordForm({ record, placeId, setModalOpen }: RecordFormProps) {
     
     const validCosts = values.additionalCosts?.filter(c => c.description && c.amount).map(c => ({...c, amount: Number(c.amount)})) || [];
     const recordRef = doc(firestore, 'users', user.uid, 'places', placeId, 'dailyRecords', record.id);
-    updateDocumentNonBlocking(recordRef, { ...values, additionalCosts: validCosts, updatedAt: serverTimestamp() });
-    toast({ title: 'Success', description: 'Record updated.' });
-    setModalOpen(false);
+    updateDoc(recordRef, { ...values, additionalCosts: validCosts, updatedAt: serverTimestamp() })
+      .then(() => {
+        toast({ title: 'Success', description: 'Record updated.' });
+        setModalOpen(false);
+      })
+      .catch((error) => {
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update record.' });
+      });
   }
 
   return (

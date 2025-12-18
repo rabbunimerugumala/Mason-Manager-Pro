@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/hook.png",
+    shortcut: "/hook.png",
+    apple: "/hook.png",
   },
 };
 
@@ -22,7 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/hook.png" />
+        <link rel="icon" href="/hook.png?v=2" type="image/png" sizes="any" />
+        <link rel="shortcut icon" href="/hook.png?v=2" type="image/png" />
+        <link rel="apple-touch-icon" href="/hook.png?v=2" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
