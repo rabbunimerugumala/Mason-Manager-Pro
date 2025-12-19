@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,13 +21,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
-
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useUser, useFirestore, useDoc } from "@/firebase";
+import {
+  doc,
+  collection,
+  getDocs,
+  writeBatch,
+  deleteDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import type { UserProfile } from "@/lib/types";
 
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
@@ -31,60 +45,84 @@ export default function SettingsPage() {
   const [isClient, setIsClient] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Get user profile to save the name before deletion
+  const userDocRef = useMemo(
+    () => (user ? doc(firestore, "users", user.uid) : null),
+    [user, firestore]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
+
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
     if (isClient && !isUserLoading && !user) {
-      router.replace('/');
+      router.replace("/");
     }
   }, [isClient, isUserLoading, user, router]);
 
   const handleClearData = async () => {
     if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You are not logged in.' });
-        return;
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You are not logged in.",
+      });
+      return;
     }
     setIsDeleting(true);
     try {
-        const placesRef = collection(firestore, 'users', user.uid, 'places');
-        const placesSnap = await getDocs(placesRef);
-        const batch = writeBatch(firestore);
+      // Save the user's name before deletion
+      const userName = userProfile?.name || "User";
 
-        for (const placeDoc of placesSnap.docs) {
-            // Delete subcollections for each place
-            const recordsRef = collection(placeDoc.ref, 'dailyRecords');
-            const recordsSnap = await getDocs(recordsRef);
-            recordsSnap.forEach(snap => batch.delete(snap.ref));
-            
-            // Delete the place itself
-            batch.delete(placeDoc.ref);
-        }
-        
-        await batch.commit();
-        
-        // After deleting subcollections, delete the user document itself.
-        await deleteDoc(doc(firestore, 'users', user.uid));
+      const placesRef = collection(firestore, "users", user.uid, "places");
+      const placesSnap = await getDocs(placesRef);
+      const batch = writeBatch(firestore);
 
+      for (const placeDoc of placesSnap.docs) {
+        // Delete subcollections for each place
+        const recordsRef = collection(placeDoc.ref, "dailyRecords");
+        const recordsSnap = await getDocs(recordsRef);
+        recordsSnap.forEach((snap) => batch.delete(snap.ref));
 
-        toast({
-          title: 'Data Cleared',
-          description: 'All your site and record data has been deleted.',
-        });
-        
-        // Log the user out and redirect to home page
-        router.push('/');
+        // Delete the place itself
+        batch.delete(placeDoc.ref);
+      }
 
+      await batch.commit();
 
+      // Delete the user document
+      await deleteDoc(doc(firestore, "users", user.uid));
+
+      // Recreate a fresh user document with the same name so user stays logged in
+      const newUserDocRef = doc(firestore, "users", user.uid);
+      await setDoc(newUserDocRef, {
+        id: user.uid,
+        name: userName,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "Data Cleared",
+        description: "All your site and record data has been deleted.",
+      });
+
+      // Redirect to sites page (user remains logged in with fresh account)
+      router.push("/sites");
     } catch (error: any) {
-        console.error("Error clearing data:", error);
-        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not clear data.' });
+      console.error("Error clearing data:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Could not clear data.",
+      });
     } finally {
-        setIsDeleting(false);
+      setIsDeleting(false);
     }
   };
-  
+
   if (!isClient || isUserLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -92,7 +130,7 @@ export default function SettingsPage() {
       </div>
     );
   }
-  
+
   if (!user) {
     return null; // Should be redirected by the effect
   }
@@ -100,12 +138,23 @@ export default function SettingsPage() {
   return (
     <div className="container mx-auto max-w-2xl p-4 md:p-6">
       <div className="flex items-center mb-6">
-         <Button variant="outline" size="icon" className="mr-4 flex-shrink-0" asChild>
-            <Link href="/sites"><ArrowLeft className="h-4 w-4" /></Link>
+        <Button
+          variant="outline"
+          size="icon"
+          className="mr-4 flex-shrink-0"
+          asChild
+        >
+          <Link href="/sites">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
         </Button>
         <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Settings</h1>
-            <p className="text-muted-foreground">Manage your application settings.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+            Settings
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your application settings.
+          </p>
         </div>
       </div>
 
@@ -121,12 +170,16 @@ export default function SettingsPage() {
             <div className="mb-4 sm:mb-0 sm:mr-4">
               <h3 className="font-semibold">Clear All My Data</h3>
               <p className="text-sm text-muted-foreground">
-                This will permanently delete your account, all work sites, and their associated records.
+                This will permanently delete your account, all work sites, and
+                their associated records.
               </p>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="shrink-0 w-full sm:w-auto">
+                <Button
+                  variant="destructive"
+                  className="shrink-0 w-full sm:w-auto"
+                >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Clear Data
                 </Button>
@@ -135,9 +188,9 @@ export default function SettingsPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete all
-                    of your data, including your account, all work sites, and their associated
-                    records.
+                    This action cannot be undone. This will permanently delete
+                    all of your data, including your account, all work sites,
+                    and their associated records.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -146,10 +199,12 @@ export default function SettingsPage() {
                     onClick={handleClearData}
                     disabled={isDeleting}
                     className={cn(
-                      'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                      "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     )}
                   >
-                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isDeleting && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Yes, delete everything
                   </AlertDialogAction>
                 </AlertDialogFooter>
