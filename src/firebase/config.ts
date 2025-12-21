@@ -2,7 +2,7 @@
 
 'use client';
 
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, FirebaseApp, getApps } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 
@@ -16,14 +16,39 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize the app
-const app: FirebaseApp = initializeApp(firebaseConfig);
+// Only initialize on client-side to prevent build errors
+let firebaseAppInstance: FirebaseApp | null = null;
 
-// Initialize Firestore
-export const db: Firestore = getFirestore(app);
+const getApp = (): FirebaseApp => {
+  // Skip initialization during SSR/build
+  if (typeof window === 'undefined') {
+    return {} as FirebaseApp;
+  }
 
-// Initialize Auth
-export const auth: Auth = getAuth(app);
+  if (!firebaseAppInstance) {
+    const existingApps = getApps();
+    firebaseAppInstance = existingApps.length > 0 
+      ? existingApps[0] 
+      : initializeApp(firebaseConfig);
+  }
+  return firebaseAppInstance;
+};
 
-// Export the app instance for use in other modules if needed
-export { app };
+// Initialize Firestore (lazy, client-side only)
+export const db: Firestore = (() => {
+  if (typeof window === 'undefined') {
+    return {} as Firestore;
+  }
+  return getFirestore(getApp());
+})();
+
+// Initialize Auth (lazy, client-side only)
+export const auth: Auth = (() => {
+  if (typeof window === 'undefined') {
+    return {} as Auth;
+  }
+  return getAuth(getApp());
+})();
+
+// Export app getter
+export const app = getApp();
