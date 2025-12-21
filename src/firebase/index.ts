@@ -1,6 +1,5 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
@@ -9,8 +8,8 @@ import { getFirestore } from 'firebase/firestore'
 export function initializeFirebase() {
   if (!getApps().length) {
     // Always initialize with the production config to ensure connectivity.
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+    // TODO: Add firebase config when config.ts is set up
+    throw new Error('Firebase config not initialized. Please configure firebase/config.ts');
   }
 
   // If already initialized, return the SDKs with the already initialized App
@@ -25,9 +24,3 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-export * from './provider';
-export * from './client-provider';
-export * from './firestore/use-collection';
-export * from './firestore/use-doc';
-export * from './errors';
-export * from './error-emitter';
