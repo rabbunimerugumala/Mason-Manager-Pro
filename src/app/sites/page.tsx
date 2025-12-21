@@ -1,6 +1,8 @@
+// ✅ Generated following IndiBuddy project rules
+
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { PlusCircle } from 'lucide-react';
 import type { Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -12,12 +14,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useAuth } from '@/context/AuthContext';
+import { useCollection } from '@/hooks/use-firestore';
 
 export default function SitesPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, loading: authLoading } = useAuth();
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -27,19 +28,17 @@ export default function SitesPage() {
     setIsClient(true);
   }, []);
 
-  const placesCollectionRef = useMemo(
-    () => (user ? collection(firestore, 'users', user.uid, 'places') : null),
-    [user, firestore]
-  );
-  const { data: places, isLoading: dataLoading } = useCollection<Place>(placesCollectionRef);
+  // Construct path for user's sites
+  const sitesPath = user ? `users/${user.id}/sites` : null;
+  const { data: places, loading: dataLoading } = useCollection<Place>(sitesPath);
 
   useEffect(() => {
-    if (isClient && !isUserLoading && !user) {
+    if (isClient && !authLoading && !user) {
       router.replace('/');
     }
-  }, [isClient, isUserLoading, user, router]);
+  }, [isClient, authLoading, user, router]);
 
-  const loading = isUserLoading || dataLoading;
+  const loading = authLoading || dataLoading;
   
   if (!isClient || loading) {
     return (

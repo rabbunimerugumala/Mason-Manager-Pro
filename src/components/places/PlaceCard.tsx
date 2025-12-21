@@ -1,3 +1,5 @@
+// ✅ Generated following IndiBuddy project rules
+
 'use client';
 
 import { useState } from 'react';
@@ -13,17 +15,17 @@ import { PlaceForm } from './PlaceForm';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore } from '@/firebase';
-import { deleteDoc } from 'firebase/firestore';
-import { doc, collection, getDocs, writeBatch } from 'firebase/firestore';
+import { useAuth } from '@/context/AuthContext';
+import { useFirestoreContext } from '@/context/FirebaseProvider';
+import { deleteDoc, doc, collection, getDocs, writeBatch } from 'firebase/firestore';
 
 interface PlaceCardProps {
   place: Place;
 }
 
 export function PlaceCard({ place }: PlaceCardProps) {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useAuth();
+  const firestore = useFirestoreContext();
   const { toast } = useToast();
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -36,7 +38,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
     }
     setIsDeleting(true);
     try {
-        const placeRef = doc(firestore, 'users', user.uid, 'places', place.id);
+        const placeRef = doc(firestore, 'users', user.id, 'sites', place.id);
         
         // Also delete subcollections like dailyRecords
         const recordsRef = collection(placeRef, 'dailyRecords');

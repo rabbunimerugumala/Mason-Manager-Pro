@@ -1,8 +1,10 @@
+// ✅ Generated following IndiBuddy project rules
+
 'use client';
 
-import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { HistoryTable } from '@/components/records/HistoryTable';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileDown, Loader2, Share2 } from 'lucide-react';
@@ -16,8 +18,8 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toJpeg } from 'html-to-image';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
+import { useAuth } from '@/context/AuthContext';
+import { useDoc, useCollection } from '@/hooks/use-firestore';
 
 
 function getWeekMonToSat(date: Date) {
@@ -31,24 +33,18 @@ export default function HistoryPage() {
   const params = useParams();
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, loading: authLoading } = useAuth();
 
   const weeklyReportRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const placeId = Array.isArray(params.id) ? params.id[0] : params.id;
   
-  const placeDocRef = useMemo(
-    () => (user && placeId ? doc(firestore, 'users', user.uid, 'places', placeId) : null),
-    [user, firestore, placeId]
-  );
-  const { data: place, isLoading: placeLoading } = useDoc<Place>(placeDocRef);
+  // Construct paths using string format
+  const placePath = user && placeId ? `users/${user.id}/sites/${placeId}` : null;
+  const { data: place, loading: placeLoading } = useDoc<Place>(placePath);
 
-  const recordsCollectionRef = useMemo(
-    () => (placeDocRef ? collection(placeDocRef, 'dailyRecords') : null),
-    [placeDocRef]
-  );
-  const { data: records, isLoading: recordsLoading } = useCollection<DailyRecord>(recordsCollectionRef);
+  const recordsPath = placePath ? `${placePath}/dailyRecords` : null;
+  const { data: records, loading: recordsLoading } = useCollection<DailyRecord>(recordsPath);
 
 
   const handleExportPdf = useCallback(() => {
@@ -108,7 +104,7 @@ export default function HistoryPage() {
     }, {} as Record<string, { records: DailyRecord[], weekLabel: string, total: number }>);
   }, [records, place]);
   
-  const loading = isUserLoading || placeLoading || recordsLoading;
+  const loading = authLoading || placeLoading || recordsLoading;
 
   if (loading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;

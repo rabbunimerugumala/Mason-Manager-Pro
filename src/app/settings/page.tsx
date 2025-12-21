@@ -1,6 +1,8 @@
+// ✅ Generated following IndiBuddy project rules
+
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser, useFirestore, useDoc } from "@/firebase";
+import { useAuth } from "@/context/AuthContext";
+import { useFirestoreContext } from "@/context/FirebaseProvider";
 import {
   doc,
   collection,
@@ -35,32 +38,24 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import type { UserProfile } from "@/lib/types";
 
 export default function SettingsPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, loading: authLoading, logout } = useAuth();
+  const firestore = useFirestoreContext();
   const router = useRouter();
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Get user profile to save the name before deletion
-  const userDocRef = useMemo(
-    () => (user ? doc(firestore, "users", user.uid) : null),
-    [user, firestore]
-  );
-  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
-    if (isClient && !isUserLoading && !user) {
+    if (isClient && !authLoading && !user) {
       router.replace("/");
     }
-  }, [isClient, isUserLoading, user, router]);
+  }, [isClient, authLoading, user, router]);
 
   const handleClearData = async () => {
     if (!user) {
@@ -74,9 +69,9 @@ export default function SettingsPage() {
     setIsDeleting(true);
     try {
       // Save the user's name before deletion
-      const userName = userProfile?.name || "User";
+      const userName = user.name || "User";
 
-      const placesRef = collection(firestore, "users", user.uid, "places");
+      const placesRef = collection(firestore, "users", user.id, "sites");
       const placesSnap = await getDocs(placesRef);
       const batch = writeBatch(firestore);
 
@@ -93,15 +88,13 @@ export default function SettingsPage() {
       await batch.commit();
 
       // Delete the user document
-      await deleteDoc(doc(firestore, "users", user.uid));
+      await deleteDoc(doc(firestore, "users", user.id));
 
       // Recreate a fresh user document with the same name so user stays logged in
-      const newUserDocRef = doc(firestore, "users", user.uid);
+      const newUserDocRef = doc(firestore, "users", user.id);
       await setDoc(newUserDocRef, {
-        id: user.uid,
         name: userName,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
 
       toast({
@@ -123,7 +116,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (!isClient || isUserLoading) {
+  if (!isClient || authLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />

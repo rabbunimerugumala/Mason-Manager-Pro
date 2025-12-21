@@ -1,3 +1,5 @@
+// ✅ Generated following IndiBuddy project rules
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -10,7 +12,8 @@ import type { Place } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useAuth } from '@/context/AuthContext';
+import { useFirestoreContext } from '@/context/FirebaseProvider';
 import { collection, doc, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
@@ -26,8 +29,8 @@ interface PlaceFormProps {
 
 export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
   const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useAuth();
+  const firestore = useFirestoreContext();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,7 +53,7 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
     }
     
     if (place) {
-      const placeRef = doc(firestore, 'users', user.uid, 'places', place.id);
+      const placeRef = doc(firestore, 'users', user.id, 'sites', place.id);
       updateDoc(placeRef, { ...data, updatedAt: serverTimestamp() })
         .then(() => {
           toast({ title: 'Success', description: 'Work site updated.' });
@@ -59,7 +62,7 @@ export function PlaceForm({ place, setModalOpen }: PlaceFormProps) {
           toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update site.' });
         });
     } else {
-      const placesCollection = collection(firestore, 'users', user.uid, 'places');
+      const placesCollection = collection(firestore, 'users', user.id, 'sites');
       addDoc(placesCollection, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
         .then(() => {
           toast({ title: 'Success', description: 'New work site created.' });

@@ -1,3 +1,5 @@
+// ✅ Generated following IndiBuddy project rules
+
 'use client';
 
 import { useState } from 'react';
@@ -42,9 +44,9 @@ import { RecordForm } from './RecordForm';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore } from '@/firebase';
-import { deleteDoc } from 'firebase/firestore';
-import { doc } from 'firebase/firestore';
+import { useAuth } from '@/context/AuthContext';
+import { useFirestoreContext } from '@/context/FirebaseProvider';
+import { deleteDoc, doc } from 'firebase/firestore';
 
 
 interface HistoryTableProps {
@@ -54,8 +56,8 @@ interface HistoryTableProps {
 
 export function HistoryTable({ records, place }: HistoryTableProps) {
   const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useAuth();
+  const firestore = useFirestoreContext();
   const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
   const isMobile = useIsMobile();
@@ -64,7 +66,7 @@ export function HistoryTable({ records, place }: HistoryTableProps) {
   const handleDelete = (recordId: string) => {
     if (!user) return;
     setDeletingRecordId(recordId);
-    const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', recordId);
+    const recordRef = doc(firestore, 'users', user.id, 'sites', place.id, 'dailyRecords', recordId);
     deleteDoc(recordRef)
       .then(() => {
         toast({ title: 'Success', description: 'Record deleted.' });

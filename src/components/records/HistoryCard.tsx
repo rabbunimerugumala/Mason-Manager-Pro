@@ -1,3 +1,5 @@
+// ✅ Generated following IndiBuddy project rules
+
 'use client';
 
 import { useState } from 'react';
@@ -13,9 +15,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { RecordForm } from './RecordForm';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUser, useFirestore } from '@/firebase';
-import { deleteDoc } from 'firebase/firestore';
-import { doc } from 'firebase/firestore';
+import { useAuth } from '@/context/AuthContext';
+import { useFirestoreContext } from '@/context/FirebaseProvider';
+import { deleteDoc, doc } from 'firebase/firestore';
 
 
 interface HistoryCardProps {
@@ -25,8 +27,8 @@ interface HistoryCardProps {
 
 export function HistoryCard({ record, place }: HistoryCardProps) {
     const { toast } = useToast();
-    const { user } = useUser();
-    const firestore = useFirestore();
+    const { user } = useAuth();
+    const firestore = useFirestoreContext();
     const [isEditModalOpen, setEditModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const isMobile = useIsMobile();
@@ -39,7 +41,7 @@ export function HistoryCard({ record, place }: HistoryCardProps) {
     const handleDelete = () => {
         if (!user) return;
         setIsDeleting(true);
-        const recordRef = doc(firestore, 'users', user.uid, 'places', place.id, 'dailyRecords', record.id);
+        const recordRef = doc(firestore, 'users', user.id, 'sites', place.id, 'dailyRecords', record.id);
         deleteDoc(recordRef)
           .then(() => {
             toast({ title: 'Success', description: 'Record deleted.' });

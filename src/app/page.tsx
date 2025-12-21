@@ -1,6 +1,8 @@
+// ✅ Generated following IndiBuddy project rules
+
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,36 +18,10 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-  useUser,
-  useAuth,
-  useFirestore,
-  useDoc,
-  FirestorePermissionError,
-  errorEmitter,
-} from "@/firebase";
-import {
-  signInAnonymously,
-  signOut,
-  User as FirebaseUser,
-} from "firebase/auth";
-import {
-  doc,
-  getDocs,
-  collection,
-  query,
-  where,
-  serverTimestamp,
-  setDoc,
-} from "firebase/firestore";
-import * as bcrypt from "bcryptjs";
-import type { UserProfile } from "@/lib/types";
-import { STORAGE_KEYS } from "@/lib/constants";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AuthPage() {
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { user, loading, signup, login } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -59,18 +35,12 @@ export default function AuthPage() {
     setIsClient(true);
   }, []);
 
-  const userDocRef = useMemo(
-    () => (user ? doc(firestore, "users", user.uid) : null),
-    [user, firestore]
-  );
-  const { data: userProfile, isLoading: isProfileLoading } =
-    useDoc<UserProfile>(userDocRef);
-
+  // Redirect if already logged in
   useEffect(() => {
-    if (isClient && user && userProfile) {
+    if (isClient && !loading && user) {
       router.replace("/sites");
     }
-  }, [isClient, user, userProfile, router]);
+  }, [isClient, loading, user, router]);
 
   const handleLoginOrSignup = async () => {
     if (!name.trim()) {
@@ -91,129 +61,46 @@ export default function AuthPage() {
       return;
     }
 
-    if (!auth || !firestore) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Firebase service is not available.",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Step 1: Always ensure a user is authenticated first.
-      let authUser = auth.currentUser;
-      if (!authUser) {
-        const userCredential = await signInAnonymously(auth);
-        authUser = userCredential.user;
-      }
-
-      if (!authUser) {
-        throw new Error("Authentication failed. Please try again.");
-      }
-
-      // Step 2: Now that we are authenticated, query the database.
-      const usersRef = collection(firestore, "users");
-      const q = query(usersRef, where("name", "==", name));
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        // --- NEW USER (SIGN UP) ---
-        const newUserDocRef = doc(firestore, "users", authUser.uid);
-
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const newUser: Omit<UserProfile, "createdAt" | "updatedAt"> = {
-          id: authUser.uid,
-          name: name,
-        };
-        const fullUserPayload = {
-          ...newUser,
-          password: hashedPassword, // Store hashed password
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-
-        await setDoc(newUserDocRef, fullUserPayload);
-
-        // Store the user ID in sessionStorage for the Header to use
-        sessionStorage.setItem(STORAGE_KEYS.USER_ID, authUser.uid);
-
-        toast({
-          title: "Account Created!",
-          description: "Logged in successfully.",
-          duration: 2000,
-        });
-        router.push("/sites");
-      } else {
-        // --- EXISTING USER (LOGIN) ---
-        const existingUserDoc = querySnapshot.docs[0];
-        const existingUser = existingUserDoc.data() as UserProfile & {
-          password?: string;
-        };
-
-        // Verify password using bcrypt
-        const passwordMatch = existingUser.password
-          ? await bcrypt.compare(password, existingUser.password)
-          : false;
-
-        if (!passwordMatch) {
-          toast({
-            variant: "destructive",
-            title: "Login Failed",
-            description: "Incorrect password.",
-            duration: 2000,
-          });
-          return;
-        }
-
-        // Password matches, log them in
-        // Use the document ID (not the id field from data) as it's the actual Firestore document ID
-        sessionStorage.setItem(STORAGE_KEYS.USER_ID, existingUserDoc.id);
-
+      // Try login first
+      try {
+        await login(name, password);
         toast({
           title: "Logged In!",
           description: "Welcome back.",
           duration: 2000,
         });
         router.push("/sites");
+      } catch (loginError: any) {
+        // If user not found, try signup
+        if (loginError.message === "User not found") {
+          await signup(name, password);
+          toast({
+            title: "Account Created!",
+            description: "Logged in successfully.",
+            duration: 2000,
+          });
+          router.push("/sites");
+        } else {
+          // Other login errors (wrong password, etc.)
+          throw loginError;
+        }
       }
     } catch (error: any) {
       console.error("Login/Signup Error:", error);
-
-      // Emit contextual error for Firestore permission issues
-      if (error.code === "permission-denied") {
-        errorEmitter.emit(
-          "permission-error",
-          new FirestorePermissionError({
-            path: `users`,
-            operation: "list", // This is the most likely initial failure point
-          })
-        );
-      } else {
-        toast({
-          variant: "destructive",
-          title: "An error occurred",
-          description: error.message || "Could not complete login/signup.",
-        });
-      }
-
-      // If something went wrong, sign out any partial anonymous session
-      if (auth.currentUser) {
-        await signOut(auth);
-      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Could not complete login/signup.",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const effectiveLoading = isUserLoading || isProfileLoading;
-
-  if (!isClient || effectiveLoading) {
+  if (!isClient || loading) {
     return (
       <div className="container mx-auto p-4 md:p-6 flex justify-center items-center h-[80vh]">
         <Card className="w-full max-w-sm">
@@ -233,8 +120,8 @@ export default function AuthPage() {
     );
   }
 
-  if (user && userProfile) {
-    return null;
+  if (user) {
+    return null; // Will redirect
   }
 
   return (
