@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: "Manage daily worker attendance, wages, and sites.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/hook.png",
+    icon: [{ url: "/hook.png", sizes: "any", type: "image/png" }],
     shortcut: "/hook.png",
     apple: "/hook.png",
   },
@@ -25,9 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/hook.png?v=2" type="image/png" sizes="any" />
-        <link rel="shortcut icon" href="/hook.png?v=2" type="image/png" />
-        <link rel="apple-touch-icon" href="/hook.png?v=2" />
+        <link rel="icon" href="/hook.png?v=3" type="image/png" sizes="any" />
+        <link rel="shortcut icon" href="/hook.png?v=3" type="image/png" />
+        <link rel="apple-touch-icon" href="/hook.png?v=3" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
